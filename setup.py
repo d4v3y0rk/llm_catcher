@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="llm-catcher",
-    version="0.2.7",
+    version="0.2.8",
     description="A FastAPI middleware that uses LLMs to diagnose API errors",
     author="Dave York",
     author_email="dave.york@me.com",
