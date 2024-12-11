@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "llm-catcher"
-version = "0.2.9"
+version = "0.3.0"
 description = "A Python library that uses LLMs to diagnose and explain exceptions"
 authors = [{name = "Dave York", email = "dave.york@me.com"}]
 readme = "README.md"
