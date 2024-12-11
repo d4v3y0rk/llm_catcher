@@ -100,9 +100,6 @@ settings.custom_handlers = {
     "ValueError": "Please explain this ValueError in simple terms",
     "TypeError": "Analyze this TypeError and suggest fixes",
 }
-
-# Debug Options
-settings.include_traceback = False  # Include traceback in response
 ```
 
 ### Environment Variables
@@ -125,8 +122,6 @@ LLM_CATCHER_HANDLE_UNHANDLED_ONLY=false
 # Custom Handlers (as JSON)
 LLM_CATCHER_CUSTOM_HANDLERS={"ValueError":"Please explain this ValueError in simple terms"}
 
-# Debug Options
-LLM_CATCHER_INCLUDE_TRACEBACK=false
 ```
 
 ### Settings Reference
@@ -140,7 +135,6 @@ LLM_CATCHER_INCLUDE_TRACEBACK=false
 | `ignore_exceptions` | List[str] | ["SystemExit"] | Exceptions to ignore |
 | `handle_unhandled_only` | bool | False | Only handle uncaught exceptions |
 | `custom_handlers` | Dict[str, str] | {} | Custom prompts per exception |
-| `include_traceback` | bool | False | Include traceback in response |
 
 ## Exception Handling Modes
 
