@@ -1,6 +1,6 @@
 # LLM Catcher
 
-LLM Catcher is a Python library that uses Large Language Models to diagnose and provide helpful explanations for exceptions in both FastAPI applications and CLI scripts.
+A Python library that uses LLMs to diagnose and explain exceptions in real-time.
 
 ## Installation
 
@@ -8,255 +8,126 @@ LLM Catcher is a Python library that uses Large Language Models to diagnose and 
 pip install llm-catcher
 ```
 
+## Quick Start
+
+1. Create a `.env` file with your OpenAI API key:
+```env
+LLM_CATCHER_OPENAI_API_KEY=your-api-key-here
+```
+
+2. Configure exception handling:
+```env
+# Choose one of these modes:
+LLM_CATCHER_HANDLED_EXCEPTIONS=UNHANDLED  # Only handle uncaught exceptions (default)
+LLM_CATCHER_HANDLED_EXCEPTIONS=ALL        # Handle all exceptions
+
+# Or specify exact exceptions to handle:
+LLM_CATCHER_HANDLED_EXCEPTIONS=ValueError,TypeError,ValidationError
+```
+
 ## Configuration
 
-LLM Catcher requires only an OpenAI API key to get started. All other settings have sensible defaults.
+All settings can be configured through environment variables or passed directly to the Settings class.
 
-### Minimal Configuration
+### Required Settings
+
+- `LLM_CATCHER_OPENAI_API_KEY`: Your OpenAI API key (required)
+
+### Optional Settings
+
+- `LLM_CATCHER_LLM_MODEL`: Model to use (default: "gpt-4")
+  - Supported models: "gpt-4", "gpt-3.5-turbo", "gpt-4-1106-preview"
+- `LLM_CATCHER_TEMPERATURE`: Model temperature (default: 0.2, range: 0-1)
+
+### Exception Handling
+
+Configure which exceptions to handle:
 ```env
-# Only required setting
-LLM_CATCHER_OPENAI_API_KEY=your-openai-api-key
-```
-
-With this minimal configuration, LLM Catcher will:
-- Only diagnose unhandled exceptions (won't interfere with your existing error handlers)
-- Ignore KeyboardInterrupt and SystemExit
-- Use GPT-4 with temperature 0.2
-
-### Exception Handling Configuration
-
-There are three ways to configure which exceptions are handled:
-
-1. Handle only unhandled exceptions (default):
-```env
-# Simple format (recommended)
+# Use UNHANDLED mode (default)
 LLM_CATCHER_HANDLED_EXCEPTIONS=UNHANDLED
 
-# Or JSON array format
-LLM_CATCHER_HANDLED_EXCEPTIONS=["UNHANDLED"]
-```
-
-2. Handle all exceptions:
-```env
-# Simple format (recommended)
+# Use ALL mode
 LLM_CATCHER_HANDLED_EXCEPTIONS=ALL
 
-# Or JSON array format
-LLM_CATCHER_HANDLED_EXCEPTIONS=["ALL"]
-```
-
-3. Handle specific exceptions:
-```env
-# Simple format (comma-separated)
+# Handle specific exceptions (comma-separated)
 LLM_CATCHER_HANDLED_EXCEPTIONS=ValueError,TypeError,ValidationError
-
-# Or JSON array format
-LLM_CATCHER_HANDLED_EXCEPTIONS=["ValueError", "TypeError", "ValidationError"]
 ```
 
 ### Ignoring Exceptions
 
 Specify exceptions to ignore (these take precedence over handled exceptions):
 ```env
-# Simple format (recommended)
+# Comma-separated list (default: KeyboardInterrupt,SystemExit)
 LLM_CATCHER_IGNORE_EXCEPTIONS=KeyboardInterrupt,SystemExit
-
-# Or JSON array format
-LLM_CATCHER_IGNORE_EXCEPTIONS=["KeyboardInterrupt", "SystemExit"]
 ```
 
 ### Custom Prompts
 
 Add custom prompts for specific exception types:
 ```env
-# JSON format required for custom handlers
+# JSON format for custom handlers
 LLM_CATCHER_CUSTOM_HANDLERS={
-    "ValueError": """
-        Please analyze this value error and provide:
-        1. The exact file and line where it occurred
-        2. What caused the invalid value
-        3. Specific code suggestions to fix it
-    """,
-    "ZeroDivisionError": """
-        Explain the division error that occurred:
-        1. Identify the file and line number
-        2. Show why the division by zero happened
-        3. Provide a code example showing how to prevent it
-    """
+    "ValueError": "Please analyze this value error and provide: 1) The exact location, 2) The cause, 3) How to fix it",
+    "TypeError": "Explain this type error and suggest fixes"
 }
 ```
 
-### Model Settings
-```env
-# Optional model settings with their defaults
-LLM_CATCHER_LLM_MODEL=gpt-4
-LLM_CATCHER_TEMPERATURE=0.2
-```
+## Environment Variables vs Direct Configuration
 
-## Usage Examples
-
-### FastAPI with UNHANDLED (Default)
-
-Only handle exceptions that aren't caught by other handlers:
+You can configure LLM Catcher either through environment variables or by passing settings directly:
 
 ```python
-from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse
+from llm_catcher import Settings
+
+# Using environment variables (recommended)
+settings = Settings()
+
+# Or passing settings directly
+settings = Settings(
+    openai_api_key="your-api-key",
+    handled_exceptions=["ValueError", "TypeError"],
+    ignore_exceptions=["KeyboardInterrupt"],
+    custom_handlers={"ValueError": "Custom prompt"},
+    llm_model="gpt-4",
+    temperature=0.5
+)
+```
+
+## Example Usage
+
+### FastAPI Integration
+
+```python
+from fastapi import FastAPI
 from llm_catcher.middleware import LLMCatcherMiddleware
 
 app = FastAPI()
 
-# Add middleware with default settings (UNHANDLED)
+# Add the middleware
 app.add_middleware(LLMCatcherMiddleware)
-
-# Your custom handler will be respected
-@app.exception_handler(ValueError)
-async def value_error_handler(request: Request, exc: ValueError):
-    return JSONResponse(
-        status_code=400,
-        content={"message": "Custom handler: Invalid value provided"}
-    )
-
-@app.get("/example")
-async def example_endpoint():
-    value = int("not a number")  # This will use your custom handler
-    return {"value": value}
-
-# Example response for unhandled exception:
-{
-    "error": "Internal Server Error",
-    "diagnosis": "Error occurred in '/app/endpoints.py', line 45: The string 'not a number' cannot be converted to an integer. The int() function expects a string containing valid numeric characters. Consider adding input validation or using a try/catch block to handle invalid input.",
-    "exception_type": "ValueError",
-    "has_schema_info": false
-}
 ```
 
-### FastAPI with ALL
-
-Handle all exceptions except those explicitly ignored:
+### CLI Application
 
 ```python
-from fastapi import FastAPI
-from llm_catcher.middleware import LLMCatcherMiddleware
+from llm_catcher import LLMExceptionDiagnoser
 
-app = FastAPI()
+# Initialize the diagnoser
+diagnoser = LLMExceptionDiagnoser()
 
-settings = {
-    "handled_exceptions": ["ALL"],
-    "ignore_exceptions": ["KeyboardInterrupt", "SystemExit"]
-}
-app.add_middleware(LLMCatcherMiddleware, settings=settings)
-
-@app.get("/example")
-async def example_endpoint():
-    value = int("not a number")  # This will be caught and diagnosed
-    return {"value": value}
+try:
+    # Your code here
+    result = 1 / 0
+except Exception as e:
+    # Get AI-powered diagnosis
+    diagnosis = await diagnoser.diagnose(e)
+    print(diagnosis)
 ```
 
-### FastAPI with Specific Exceptions
+## Notes
 
-Handle only certain types of exceptions:
-
-```python
-from fastapi import FastAPI
-from llm_catcher.middleware import LLMCatcherMiddleware
-
-app = FastAPI()
-
-settings = {
-    "handled_exceptions": ["ValueError", "TypeError", "ValidationError"],
-    "custom_handlers": {
-        "ValueError": "Please analyze this value error with file and line information"
-    }
-}
-app.add_middleware(LLMCatcherMiddleware, settings=settings)
-```
-
-## Usage in CLI Applications
-
-For CLI applications, use the diagnoser directly with async/await:
-
-```python
-import asyncio
-import traceback
-from llm_catcher.diagnoser import LLMExceptionDiagnoser
-
-async def handle_error(diagnoser: LLMExceptionDiagnoser, e: Exception):
-    """Handle an error with the diagnoser."""
-    stack_trace = "".join(traceback.format_exception(type(e), e, e.__traceback__))
-    diagnosis = await diagnoser.diagnose(stack_trace)
-    print(f"\nError occurred! 🚨")
-    print(f"Exception type: {type(e).__name__}")
-    print(f"\nDiagnosis:\n{diagnosis}")
-
-async def main():
-    # Initialize the diagnoser
-    diagnoser = LLMExceptionDiagnoser()
-
-    try:
-        # Your code that might raise exceptions
-        result = perform_risky_operation()
-        print(result)
-    except Exception as e:
-        await handle_error(diagnoser, e)
-
-def perform_risky_operation():
-    # This will raise an exception
-    return 1 / 0
-
-if __name__ == "__main__":
-    asyncio.run(main())
-
-# Example output:
-# Error occurred! 🚨
-# Exception type: ZeroDivisionError
-#
-# Diagnosis:
-# Error in 'examples/cli_example.py', line 42: A division by zero error occurred in the
-# perform_risky_operation function. The code attempted to divide 1 by 0, which is
-# mathematically undefined. Add a check before the division operation:
-# if denominator != 0: result = numerator / denominator
-```
-
-## Special Configuration Options
-
-### ALL Handler
-The `ALL` option will catch and diagnose all exceptions except those in `ignore_exceptions`:
-
-```python
-settings = {
-    "handled_exceptions": ["ALL"],
-    "ignore_exceptions": ["KeyboardInterrupt", "SystemExit"]
-}
-app.add_middleware(LLMCatcherMiddleware, settings=settings)
-```
-
-### UNHANDLED Handler
-The `UNHANDLED` option will only catch exceptions that aren't handled by other error handlers:
-
-```python
-settings = {
-    "handled_exceptions": ["UNHANDLED"],
-    "ignore_exceptions": ["KeyboardInterrupt"]
-}
-app.add_middleware(LLMCatcherMiddleware, settings=settings)
-```
-
-### Handling Priority
-
-When using these special options, the handling priority is:
-
-1. `ignore_exceptions` (always checked first)
-2. Existing FastAPI exception handlers (when using UNHANDLED)
-3. LLM Catcher handlers based on configuration:
-   - `ALL`: Handles all exceptions not ignored
-   - `UNHANDLED`: Only handles exceptions not caught by other handlers
-   - Specific exceptions: Only handles listed exceptions
-
-## Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
-
-## License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
+- The OpenAI API key is required and must be provided either through environment variables or direct configuration
+- Settings are validated on initialization
+- Invalid values will fall back to defaults
+- Environment variables take precedence over direct configuration
+- Custom handlers must be valid JSON when provided through environment variables
