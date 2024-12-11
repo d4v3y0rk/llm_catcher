@@ -22,7 +22,28 @@ class LLMExceptionDiagnoser:
         # Initialize both sync and async clients
         self.async_client = AsyncOpenAI(api_key=self.settings.openai_api_key)
         self.sync_client = OpenAI(api_key=self.settings.openai_api_key)
-        logger.debug(f"Using model: {self.settings.llm_model}")
+
+    @property
+    def llm_model(self) -> str:
+        """Get current LLM model."""
+        return self.settings.llm_model
+
+    @llm_model.setter
+    def llm_model(self, model: str):
+        """Set LLM model."""
+        self.settings.llm_model = model
+        logger.debug(f"Model updated to: {model}")
+
+    @property
+    def temperature(self) -> float:
+        """Get current temperature setting."""
+        return self.settings.temperature
+
+    @temperature.setter
+    def temperature(self, value: float):
+        """Set temperature value."""
+        self.settings.temperature = value
+        logger.debug(f"Temperature updated to: {value}")
 
     def _get_prompt(self, error: Exception) -> str:
         """Get the diagnosis prompt for an error."""
@@ -41,6 +62,8 @@ class LLMExceptionDiagnoser:
     async def async_diagnose(self, error: Exception) -> str:
         """Diagnose an exception using LLM (async version)."""
         try:
+            logger.info(f"Diagnosing error: {error}")
+            logger.info(f"Using model: {self.settings.llm_model}")
             response = await self.async_client.chat.completions.create(
                 model=self.settings.llm_model,
                 messages=[{"role": "user", "content": self._get_prompt(error)}],
@@ -54,6 +77,8 @@ class LLMExceptionDiagnoser:
     def diagnose(self, error: Exception) -> str:
         """Diagnose an exception using LLM (sync version)."""
         try:
+            logger.info(f"Diagnosing error: {error}")
+            logger.info(f"Using model: {self.settings.llm_model}")
             response = self.sync_client.chat.completions.create(
                 model=self.settings.llm_model,
                 messages=[{"role": "user", "content": self._get_prompt(error)}],

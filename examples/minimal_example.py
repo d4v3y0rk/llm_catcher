@@ -5,6 +5,7 @@ async def main():
     """Demonstrate basic usage of LLM Catcher."""
     # Initialize settings and diagnoser
     diagnoser = LLMExceptionDiagnoser()
+    diagnoser.llm_model = "gpt-4o-mini"
 
     try:
         # Cause a simple error
