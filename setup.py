@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="llm-catcher",
-    version="0.3.0",
+    version="0.3.1",
     description="A Python library that uses LLMs to diagnose and explain exceptions",
     author="Dave York",
     author_email="dave.york@me.com",
