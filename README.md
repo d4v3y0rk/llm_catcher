@@ -76,18 +76,71 @@ Each example includes detailed comments and demonstrates best practices for usin
 
 All settings can be configured through environment variables or the Settings class:
 
-### Required Settings
+### Complete Settings Example
 
-- `LLM_CATCHER_OPENAI_API_KEY`: Your OpenAI API key
+```python
+from llm_catcher.settings import get_settings
 
-### Optional Settings
+settings = get_settings()
 
-- `LLM_CATCHER_LLM_MODEL`: Model to use (default: "gpt-4")
-  - Supported: "gpt-4", "gpt-3.5-turbo", "gpt-4-1106-preview"
-- `LLM_CATCHER_TEMPERATURE`: Model temperature (default: 0.2, range: 0-1)
-- `LLM_CATCHER_HANDLED_EXCEPTIONS`: Which exceptions to handle
-- `LLM_CATCHER_IGNORE_EXCEPTIONS`: Exceptions to ignore
-- `LLM_CATCHER_CUSTOM_HANDLERS`: Custom prompts for specific exceptions
+# Required
+settings.openai_api_key = "your-api-key"  # Or set via LLM_CATCHER_OPENAI_API_KEY
+
+# Model Settings
+settings.llm_model = "gpt-4"  # Options: "gpt-4", "gpt-3.5-turbo", "gpt-4-1106-preview"
+settings.temperature = 0.2  # Range: 0.0-1.0
+
+# Exception Handling
+settings.handled_exceptions = ["ALL"]  # Options: "ALL", "UNHANDLED", or specific exceptions
+settings.ignore_exceptions = ["SystemExit"]  # Exceptions to always ignore
+settings.handle_unhandled_only = False  # Only handle exceptions without existing handlers
+
+# Custom Handlers
+settings.custom_handlers = {
+    "ValueError": "Please explain this ValueError in simple terms",
+    "TypeError": "Analyze this TypeError and suggest fixes",
+}
+
+# Debug Options
+settings.include_traceback = False  # Include traceback in response
+```
+
+### Environment Variables
+
+The same settings can be configured via environment variables:
+
+```env
+# Required
+LLM_CATCHER_OPENAI_API_KEY=your-api-key-here
+
+# Model Settings
+LLM_CATCHER_LLM_MODEL=gpt-4
+LLM_CATCHER_TEMPERATURE=0.2
+
+# Exception Handling
+LLM_CATCHER_HANDLED_EXCEPTIONS=ALL
+LLM_CATCHER_IGNORE_EXCEPTIONS=SystemExit
+LLM_CATCHER_HANDLE_UNHANDLED_ONLY=false
+
+# Custom Handlers (as JSON)
+LLM_CATCHER_CUSTOM_HANDLERS={"ValueError":"Please explain this ValueError in simple terms"}
+
+# Debug Options
+LLM_CATCHER_INCLUDE_TRACEBACK=false
+```
+
+### Settings Reference
+
+| Setting | Type | Default | Description |
+|---------|------|---------|-------------|
+| `openai_api_key` | str | None | Your OpenAI API key (required) |
+| `llm_model` | str | "gpt-4" | LLM model to use |
+| `temperature` | float | 0.2 | Model temperature (0.0-1.0) |
+| `handled_exceptions` | List[str] | ["UNHANDLED"] | Exceptions to handle |
+| `ignore_exceptions` | List[str] | ["SystemExit"] | Exceptions to ignore |
+| `handle_unhandled_only` | bool | False | Only handle uncaught exceptions |
+| `custom_handlers` | Dict[str, str] | {} | Custom prompts per exception |
+| `include_traceback` | bool | False | Include traceback in response |
 
 ## Exception Handling Modes
 
