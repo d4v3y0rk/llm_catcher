@@ -54,7 +54,8 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
     update_version() {
         local file=$1
         local pattern=$2
-        sed "s/$pattern/\"$VERSION\"/" "$file" > "$file.tmp" && mv "$file.tmp" "$file"
+        local replacement=$3
+        sed "s/$pattern/$replacement/" "$file" > "$file.tmp" && mv "$file.tmp" "$file"
         cleanup_backups  # Clean up after each update
     }
 else
@@ -62,7 +63,8 @@ else
     update_version() {
         local file=$1
         local pattern=$2
-        sed -i "s/$pattern/\"$VERSION\"/" "$file"
+        local replacement=$3
+        sed -i "s/$pattern/$replacement/" "$file"
         cleanup_backups  # Clean up after each update
     }
 fi
@@ -70,15 +72,15 @@ fi
 echo "Updating version to $VERSION..."
 
 # Update version in pyproject.toml
-update_version "pyproject.toml" "version = \".*\""
+update_version "pyproject.toml" "version = \".*\"" "version = \"$VERSION\""
 check_status "Failed to update pyproject.toml"
 
 # Update version in setup.py
-update_version "setup.py" "version=\".*\""
+update_version "setup.py" "version=\".*\"" "version=\"$VERSION\""
 check_status "Failed to update setup.py"
 
 # Update version in __init__.py
-update_version "llm_catcher/__init__.py" "__version__ = \".*\""
+update_version "llm_catcher/__init__.py" "__version__ = \".*\"" "__version__ = \"$VERSION\""
 check_status "Failed to update __init__.py"
 
 # Clean previous builds
