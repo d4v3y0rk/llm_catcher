@@ -130,7 +130,7 @@ source venv/bin/activate  # Linux/Mac
 .\venv\Scripts\activate  # Windows
 
 # Install development dependencies
-pip install -e ".[dev]"
+pip install -e ".[dev]"  # This installs the package with development extras
 ```
 
 ### Running Tests
@@ -139,7 +139,7 @@ pip install -e ".[dev]"
 # Run all tests
 pytest
 
-# Run with coverage
+# Run with coverage (requires pytest-cov, installed with [dev] extras)
 pytest --cov=llm_catcher
 
 # Run specific test file
