@@ -6,16 +6,37 @@ from loguru import logger
 from openai import AsyncOpenAI
 
 class LLMExceptionDiagnoser:
-    def __init__(self, api_key: str | None = None, model: str | None = None):
+    def __init__(self, settings=None, api_key: str | None = None, model: str | None = None):
         """
-        Initialize the diagnoser with optional override settings.
-        If not provided, will use settings from environment.
+        Initialize the diagnoser with either settings object or individual parameters.
+
+        Args:
+            settings: Settings object (takes precedence if provided)
+            api_key: Optional API key override
+            model: Optional model override
         """
         logger.info("Initializing LLM Exception Diagnoser")
-        self.settings = get_settings()
-        self.api_key = api_key or self.settings.openai_api_key
-        self.client = AsyncOpenAI(api_key=self.api_key)
-        self.model = model or self.settings.llm_model
+
+        if settings:
+            self.settings = settings
+            self.api_key = settings.openai_api_key  # For backward compatibility
+        else:
+            self.settings = get_settings()
+            if api_key:
+                self.settings.openai_api_key = api_key
+                self.api_key = api_key  # For backward compatibility
+            else:
+                self.api_key = self.settings.openai_api_key  # For backward compatibility
+            if model:
+                self.settings.llm_model = model
+
+        # Initialize OpenAI client with API key from settings
+        self.client = AsyncOpenAI(
+            api_key=self.settings.openai_api_key,
+            organization=None  # Add this if needed for project API keys
+        )
+
+        self.model = self.settings.llm_model
         self.temperature = self.settings.temperature
         logger.debug(f"Using model: {self.model}")
 

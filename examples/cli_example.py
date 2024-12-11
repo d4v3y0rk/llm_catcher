@@ -1,96 +1,94 @@
 import asyncio
 import traceback
-from llm_catcher.diagnoser import LLMExceptionDiagnoser
-from typing import List, Dict
-import json
-from loguru import logger
+from llm_catcher import LLMExceptionDiagnoser
+from llm_catcher.settings import get_settings
 
-class CustomError(Exception):
-    """Custom error that has its own handler."""
-    pass
+def standard_error_handler(error: Exception):
+    """Standard Python error handling."""
+    print(f"\nHandled by standard Python error handling:")
+    print(f"Error Type: {type(error).__name__}")
+    print(f"Error Message: {str(error)}")
 
-class DataProcessor:
-    def process_numbers(self, numbers: List[int]) -> Dict[str, float]:
-        """Process a list of numbers with some risky operations."""
-        total = sum(numbers)
-        average = total / len(numbers)  # Potential ZeroDivisionError
-        result = {
-            "total": total,
-            "average": average,
-            "first_item_squared": numbers[0] ** 2,  # Potential IndexError
-        }
-        return result
+async def demonstrate_unhandled_mode():
+    """Demonstrate UNHANDLED mode behavior."""
+    print("\n=== Testing UNHANDLED Mode ===")
+    print("In this mode, LLM Catcher only handles exceptions that bubble up to the top level")
 
-    def load_data(self, filename: str) -> Dict:
-        """Load and parse JSON data from a file."""
-        with open(filename, 'r') as f:  # Potential FileNotFoundError
-            data = json.load(f)  # Potential JSONDecodeError
-        return data
+    # Use settings with UNHANDLED mode
+    settings = get_settings()
+    settings.handled_exceptions = ["UNHANDLED"]
+    diagnoser = LLMExceptionDiagnoser(settings)
 
-    def custom_operation(self):
-        """Operation that raises our custom error."""
-        raise CustomError("This is a custom error")
-
-async def handle_error(diagnoser: LLMExceptionDiagnoser, e: Exception):
-    """Handle an error with the diagnoser."""
-    stack_trace = "".join(traceback.format_exception(type(e), e, e.__traceback__))
-    diagnosis = await diagnoser.diagnose(stack_trace)
-    print("\nError occurred! 🚨")
-    print(f"Exception type: {type(e).__name__}")
-    print(f"\nDiagnosis:\n{diagnosis}")
-
-def custom_error_handler(e: CustomError):
-    """Custom handler for CustomError."""
-    print("\nCustom handler caught an error! 🎯")
-    print(f"Message: {str(e)}")
-    return True
-
-async def run_examples():
-    """Run the example error cases."""
-    # Initialize the diagnoser
-    diagnoser = LLMExceptionDiagnoser()
-    processor = DataProcessor()
-
-    # Register custom handler
-    custom_handlers = {
-        CustomError: custom_error_handler
-    }
-
-    print("\n1. Testing ZeroDivisionError (unhandled):")
+    print("\nTest 1: Caught and handled exception")
     try:
-        numbers = []  # Empty list to trigger error
-        result = processor.process_numbers(numbers)
-        print(f"Processed result: {result}")
+        try:
+            raise ValueError("This error will be caught and handled normally")
+        except ValueError as e:
+            # This exception is caught and handled, so LLM won't see it
+            standard_error_handler(e)
+            # Not re-raising, so it's fully handled here
     except Exception as e:
-        # This will be caught by LLM Catcher in both UNHANDLED and ALL modes
-        await handle_error(diagnoser, e)
+        # This shouldn't run since the error was handled
+        stack_trace = ''.join(traceback.format_exception(type(e), e, e.__traceback__))
+        diagnosis = await diagnoser.diagnose(stack_trace)
+        print(f"LLM Diagnosis: {diagnosis}")
 
-    print("\n2. Testing CustomError (has custom handler):")
+    print("\nTest 2: Uncaught exception bubbling up")
     try:
-        processor.custom_operation()
-    except CustomError as e:
-        if custom_handlers.get(type(e)):
-            # This will be handled by custom handler in UNHANDLED mode
-            # but will be caught by LLM Catcher in ALL mode
-            handled = custom_handlers[type(e)](e)
-            if not handled and 'ALL' in diagnoser.settings.handled_exceptions:
-                await handle_error(diagnoser, e)
-        else:
-            await handle_error(diagnoser, e)
-
-    print("\n3. Testing FileNotFoundError:")
-    try:
-        data = processor.load_data("nonexistent.json")
-        print(f"Loaded data: {data}")
+        # This will raise a NameError with line number info
+        def cause_error():
+            x = undefined_variable  # This will raise a NameError
+            return x
+        cause_error()
     except Exception as e:
-        # This will be caught by LLM Catcher in both modes
-        await handle_error(diagnoser, e)
+        # Get full stack trace with line numbers
+        stack_trace = ''.join(traceback.format_exception(type(e), e, e.__traceback__))
+        diagnosis = await diagnoser.diagnose(stack_trace)
+        print(f"LLM Diagnosis: {diagnosis}")
+
+async def demonstrate_all_mode():
+    """Demonstrate ALL mode behavior."""
+    print("\n=== Testing ALL Mode ===")
+    print("In this mode, LLM Catcher handles all exceptions, even if they're caught")
+
+    # Use settings with ALL mode
+    settings = get_settings()
+    settings.handled_exceptions = ["ALL"]
+    diagnoser = LLMExceptionDiagnoser(settings)
+
+    print("\nTest 1: Caught and handled exception")
+    try:
+        try:
+            def cause_value_error():
+                raise ValueError("This error will be handled by both standard handler and LLM")
+            cause_value_error()
+        except ValueError as e:
+            # Standard handling occurs
+            standard_error_handler(e)
+            # In ALL mode, we also get LLM diagnosis
+            raise  # Re-raise to get LLM diagnosis
+    except Exception as e:
+        stack_trace = ''.join(traceback.format_exception(type(e), e, e.__traceback__))
+        diagnosis = await diagnoser.diagnose(stack_trace)
+        print(f"LLM Diagnosis: {diagnosis}")
+
+    print("\nTest 2: Uncaught exception bubbling up")
+    try:
+        def cause_error():
+            x = undefined_variable  # This will raise a NameError
+            return x
+        cause_error()
+    except Exception as e:
+        stack_trace = ''.join(traceback.format_exception(type(e), e, e.__traceback__))
+        diagnosis = await diagnoser.diagnose(stack_trace)
+        print(f"LLM Diagnosis: {diagnosis}")
 
 async def main():
     print("Running CLI example with LLM Catcher...\n")
 
     # Initialize diagnoser for settings display
-    diagnoser = LLMExceptionDiagnoser()
+    settings = get_settings()
+    diagnoser = LLMExceptionDiagnoser(settings)
 
     print("Current configuration:")
     print(f"Model: {diagnoser.model}")
@@ -99,11 +97,9 @@ async def main():
     print(f"Ignore exceptions: {diagnoser.settings.ignore_exceptions}")
     print(f"Custom handlers: {diagnoser.settings.custom_handlers}")
 
-    print("\nTry changing LLM_CATCHER_HANDLED_EXCEPTIONS in .env to:")
-    print("- UNHANDLED (default): Only handles exceptions without custom handlers")
-    print("- ALL: Handles all exceptions, even those with custom handlers")
-
-    await run_examples()
+    # Demonstrate both modes
+    await demonstrate_unhandled_mode()
+    await demonstrate_all_mode()
 
 if __name__ == "__main__":
     asyncio.run(main())
