@@ -45,6 +45,7 @@ LLM_CATCHER_HANDLED_EXCEPTIONS=ValueError,TypeError,ValidationError
 
 ```python
 import asyncio
+import traceback
 from llm_catcher import LLMExceptionDiagnoser
 
 async def main():
@@ -52,7 +53,8 @@ async def main():
     try:
         1/0  # Cause an error
     except Exception as e:
-        print(await diagnoser.diagnose(e))
+        stack_trace = ''.join(traceback.format_exception(type(e), e, e.__traceback__))
+        print(await diagnoser.diagnose(stack_trace))
 
 if __name__ == "__main__":
     asyncio.run(main())
