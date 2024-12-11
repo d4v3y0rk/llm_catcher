@@ -1,25 +1,19 @@
 # LLM Catcher
 
-A Python library that uses LLMs to diagnose and explain exceptions in real-time. It provides intelligent error diagnosis for Python applications, with special support for FastAPI.
+LLM Catcher is a Python library that uses Large Language Models to diagnose and explain exceptions in your code.
 
 ## Features
 
-- Intelligent exception diagnosis using OpenAI's GPT models
-- FastAPI middleware for automatic error handling
-- Support for both caught and uncaught exceptions
-- Custom error handlers and prompts
-- Environment-based configuration
-- Comprehensive stack trace analysis
-- Schema-aware error diagnosis for FastAPI
+- Automatic exception diagnosis using LLMs
+- FastAPI middleware for handling API exceptions
+- Customizable exception handling
+- Support for custom prompts per exception type
+- Configurable via environment variables or code
 
 ## Installation
 
 ```bash
-# Install from PyPI
 pip install llm-catcher
-
-# For development
-pip install llm-catcher[dev]
 ```
 
 ## Quick Start
@@ -41,80 +35,42 @@ LLM_CATCHER_HANDLED_EXCEPTIONS=ALL
 LLM_CATCHER_HANDLED_EXCEPTIONS=ValueError,TypeError,ValidationError
 ```
 
-## Minimal Example
+## Examples
 
-```python
-import asyncio
-import traceback
-from llm_catcher import LLMExceptionDiagnoser
+The `examples/` directory contains several examples demonstrating different use cases:
 
-async def main():
-    diagnoser = LLMExceptionDiagnoser()
-    try:
-        1/0  # Cause an error
-    except Exception as e:
-        stack_trace = ''.join(traceback.format_exception(type(e), e, e.__traceback__))
-        print(await diagnoser.diagnose(stack_trace))
+### 1. Minimal Example (`examples/minimal.py`)
+- Basic usage with direct LLM exception diagnosis
+- Shows how to set up the diagnoser
+- Demonstrates basic error handling and diagnosis
 
-if __name__ == "__main__":
-    asyncio.run(main())
+### 2. FastAPI Integration (`examples/fastapi_example.py`)
+- Shows FastAPI middleware integration
+- Demonstrates custom error handlers
+- Includes Pydantic schema validation
+- Shows different error scenarios
+- Includes custom prompts for specific errors
+
+### 3. CLI Example (`examples/cli_example.py`)
+- Demonstrates both UNHANDLED and ALL modes
+- Shows difference between caught and uncaught exceptions
+- Shows standard error handling vs LLM diagnosis
+- Includes stack trace handling
+
+Run any example like this:
+```bash
+# Run minimal example
+python examples/minimal.py
+
+# Run FastAPI example
+python examples/fastapi_example.py
+# Then visit http://localhost:8000/docs
+
+# Run CLI example
+python examples/cli_example.py
 ```
 
-## FastAPI Integration
-
-```python
-from fastapi import FastAPI
-from llm_catcher.middleware import LLMCatcherMiddleware
-from llm_catcher.settings import Settings
-
-app = FastAPI()
-
-# Configure with Settings object
-settings = Settings(
-    handled_exceptions=["UNHANDLED"],  # Only handle uncaught exceptions
-    ignore_exceptions=["KeyboardInterrupt"],
-    custom_handlers={
-        "ValueError": "This is a validation error. Please check: \n1. Input types\n2. Required fields",
-        "ZeroDivisionError": "This is a division by zero error. Check division operations."
-    }
-)
-
-# Add the middleware
-app.add_middleware(LLMCatcherMiddleware, settings=settings)
-
-# Custom handler for specific exceptions (respected in UNHANDLED mode)
-@app.exception_handler(ValueError)
-async def value_error_handler(request: Request, exc: ValueError):
-    return JSONResponse(
-        status_code=400,
-        content={"message": "Custom handler: Invalid value provided"}
-    )
-```
-
-## Standalone Usage
-
-```python
-import asyncio
-from llm_catcher import LLMExceptionDiagnoser
-import traceback
-
-async def main():
-    # Initialize diagnoser
-    diagnoser = LLMExceptionDiagnoser()
-
-    try:
-        # Your code here
-        result = 1 / 0
-    except Exception as e:
-        # Get full stack trace
-        stack_trace = ''.join(traceback.format_exception(type(e), e, e.__traceback__))
-        # Get AI-powered diagnosis
-        diagnosis = await diagnoser.diagnose(stack_trace)
-        print(diagnosis)
-
-if __name__ == "__main__":
-    asyncio.run(main())
-```
+Each example includes detailed comments and demonstrates best practices for using LLM Catcher in different contexts.
 
 ## Configuration
 
@@ -229,4 +185,4 @@ Each example includes detailed comments and demonstrates best practices for usin
 
 ## License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+MIT License

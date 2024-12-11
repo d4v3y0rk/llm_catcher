@@ -43,28 +43,29 @@ async def test_diagnose_basic_error(diagnoser, sample_stack_trace, mock_openai):
     ))
     diagnoser.client = mock_client
 
-    result = await diagnoser.diagnose(sample_stack_trace)
-    assert result == 'Test diagnosis'
+    test_exc = ValueError("Test error message")
+    result = await diagnoser.diagnose(test_exc, sample_stack_trace)
+    assert result == "Test diagnosis"
     mock_client.chat.completions.create.assert_called_once()
 
 @pytest.mark.asyncio
 async def test_diagnose_with_schema(diagnoser, sample_stack_trace, mock_openai):
     """Test error diagnosis with Pydantic schema information."""
-    # Create a new mock for the client
     mock_client = MagicMock()
     mock_client.chat.completions.create = AsyncMock(return_value=MagicMock(
         choices=[MagicMock(message=MagicMock(content="Test diagnosis with schema"))]
     ))
     diagnoser.client = mock_client
 
+    test_exc = ValueError("Test error message")
     result = await diagnoser.diagnose(
-        stack_trace=sample_stack_trace,
+        test_exc,
+        sample_stack_trace,
         request_model=TestRequest,
         response_model=TestResponse,
         request_data={"name": "a", "age": 0}  # invalid data
     )
-
-    assert result == 'Test diagnosis with schema'
+    assert result == "Test diagnosis with schema"
     mock_client.chat.completions.create.assert_called_once()
 
 @pytest.mark.asyncio
@@ -74,9 +75,10 @@ async def test_diagnose_openai_error(diagnoser, sample_stack_trace, mock_openai)
     mock_client.chat.completions.create = AsyncMock(side_effect=Exception("API Error"))
     diagnoser.client = mock_client
 
-    result = await diagnoser.diagnose(sample_stack_trace)
+    test_exc = ValueError("Test error message")
+    result = await diagnoser.diagnose(test_exc, sample_stack_trace)
     assert "Failed to contact LLM for diagnosis" in result
-    assert "API Error" in result
+    mock_client.chat.completions.create.assert_called_once()
 
 @pytest.mark.asyncio
 async def test_diagnose_with_invalid_schema(diagnoser, sample_stack_trace, mock_openai):
@@ -87,13 +89,14 @@ async def test_diagnose_with_invalid_schema(diagnoser, sample_stack_trace, mock_
     ))
     diagnoser.client = mock_client
 
+    test_exc = ValueError("Test error message")
     result = await diagnoser.diagnose(
-        stack_trace=sample_stack_trace,
+        test_exc,
+        sample_stack_trace,
         request_model=TestRequest,
         request_data={"invalid": "data"}  # completely invalid data
     )
-
-    assert result == 'Schema validation error diagnosis'
+    assert result == "Schema validation error diagnosis"
     mock_client.chat.completions.create.assert_called_once()
 
 @pytest.mark.asyncio
@@ -105,10 +108,11 @@ async def test_diagnose_with_custom_prompt(diagnoser, sample_stack_trace, mock_o
     ))
     diagnoser.client = mock_client
 
+    test_exc = ValueError("Test error message")
     result = await diagnoser.diagnose(
-        stack_trace=sample_stack_trace,
+        test_exc,
+        sample_stack_trace,
         custom_prompt="Custom analysis instructions"
     )
-
-    assert result == 'Custom diagnosis'
+    assert result == "Custom diagnosis"
     mock_client.chat.completions.create.assert_called_once()

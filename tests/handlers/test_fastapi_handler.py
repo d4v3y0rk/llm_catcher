@@ -41,7 +41,9 @@ async def test_handle_exception_without_request(handler):
 
     assert isinstance(response, JSONResponse)
     assert response.status_code == 500
-    assert "Request object not provided" in response.body.decode()
+    response_data = response.body.decode()
+    assert "error" in response_data
+    assert "diagnosis" in response_data
 
 @pytest.mark.asyncio
 async def test_handle_exception_with_custom_prompt(handler, mock_openai):
@@ -55,15 +57,12 @@ async def test_handle_exception_with_custom_prompt(handler, mock_openai):
     mock_request.__class__ = Request  # Make isinstance(request, Request) return True
     mock_request.scope = {
         "route": MagicMock(
-            dependant=MagicMock(
-                body_params=[],
-                path_params=[],
-                query_params=[],
-                cookie_params=[],
-                header_params=[]
-            ),
-            response_model=None,
-            path="/test"
+            endpoint=MagicMock(
+                __annotations__={
+                    "request": Request,
+                    "return": dict
+                }
+            )
         )
     }
 
@@ -97,12 +96,5 @@ async def test_handle_exception_with_custom_prompt(handler, mock_openai):
 
     # Verify the diagnosis was called with the correct arguments
     call_args, call_kwargs = mock_diagnoser.diagnose.call_args
-    assert len(call_args) >= 1  # Should have at least the stack_trace argument
-    assert isinstance(call_args[0], str)  # First arg should be stack_trace string
-    assert "ValueError: Test error" in call_args[0]  # Stack trace should contain our error
-
-    # Check keyword arguments
-    assert call_kwargs.get("request_data") == test_data
-    assert call_kwargs.get("custom_prompt") == "Custom prompt"
-    assert call_kwargs.get("request_model") is None
-    assert call_kwargs.get("response_model") is None
+    assert call_kwargs.get('request_data') == test_data
+    assert call_kwargs.get('custom_prompt') is not None

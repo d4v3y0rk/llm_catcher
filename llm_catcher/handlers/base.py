@@ -8,28 +8,33 @@ class BaseExceptionHandler(ABC):
     def __init__(self, diagnoser: LLMExceptionDiagnoser, settings: Optional[Dict[str, Any]] = None):
         self.diagnoser = diagnoser
         self.settings = settings or {}
-        self.handled_exceptions = self._get_exception_classes(
-            self.settings.get("handled_exceptions", ["Exception"])
-        )
-        self.ignore_exceptions = self._get_exception_classes(
-            self.settings.get("ignore_exceptions", [])
-        )
-        self.custom_handlers = self.settings.get("custom_handlers", {})
 
-    def _get_exception_classes(self, exception_names: list[str]) -> list[Type[Exception]]:
-        """Convert exception names to actual exception classes."""
-        exceptions = []
+        # Get settings values directly from attributes if it's a Settings object
+        if hasattr(settings, 'handled_exceptions'):
+            self.handled_exceptions = self._parse_exceptions(settings.handled_exceptions)
+            self.ignore_exceptions = self._parse_exceptions(settings.ignore_exceptions)
+            self.custom_handlers = settings.custom_handlers
+            self.handle_unhandled_only = settings.handle_unhandled_only
+        else:
+            # Fallback to dictionary access for dict settings
+            self.handled_exceptions = self._parse_exceptions(
+                settings.get("handled_exceptions", ["Exception"]) if settings else ["Exception"]
+            )
+            self.ignore_exceptions = self._parse_exceptions(
+                settings.get("ignore_exceptions", ["KeyboardInterrupt"]) if settings else ["KeyboardInterrupt"]
+            )
+            self.custom_handlers = settings.get("custom_handlers", {}) if settings else {}
+            self.handle_unhandled_only = settings.get("handle_unhandled_only", False) if settings else False
 
-        # Handle special cases
-        if "ALL" in exception_names:
-            return [Exception]  # Will catch all exceptions
+    def _parse_exceptions(self, exceptions) -> List[Type[Exception]]:
+        """Parse exception names into actual exception classes."""
+        if not exceptions:
+            return []
 
-        if "UNHANDLED" in exception_names:
-            # Return a special marker that the middleware will use
-            self.handle_unhandled_only = True
-            return [Exception]  # Will be filtered by middleware
+        if isinstance(exceptions, str):
+            exceptions = [exceptions]
 
-        # Normal exception handling
+        result = []
         builtin_exceptions = {
             'Exception': Exception,
             'ValueError': ValueError,
@@ -51,13 +56,26 @@ class BaseExceptionHandler(ABC):
             'AssertionError': AssertionError,
         }
 
-        for name in exception_names:
-            if name in builtin_exceptions:
-                exceptions.append(builtin_exceptions[name])
+        for exc in exceptions:
+            if exc == "ALL":
+                result.append(Exception)
+            elif exc == "UNHANDLED":
+                self.handle_unhandled_only = True
+                result.append(Exception)
             else:
-                logger.warning(f"Could not find exception class: {name}")
+                # First try the builtin exceptions map
+                if exc in builtin_exceptions:
+                    result.append(builtin_exceptions[exc])
+                else:
+                    # Fallback to eval if not found in map
+                    try:
+                        exc_class = eval(exc)
+                        if isinstance(exc_class, type) and issubclass(exc_class, Exception):
+                            result.append(exc_class)
+                    except (NameError, TypeError):
+                        logger.warning(f"Invalid exception type: {exc}")
 
-        return exceptions
+        return result
 
     def should_handle(self, exc: Exception) -> bool:
         """Determine if the exception should be handled."""
@@ -66,11 +84,9 @@ class BaseExceptionHandler(ABC):
         return any(isinstance(exc, handled) for handled in self.handled_exceptions)
 
     def get_custom_prompt(self, exc: Exception) -> Optional[str]:
-        """Get custom prompt for specific exception type if configured."""
-        for exc_name, prompt in self.custom_handlers.items():
-            if exc.__class__.__name__ == exc_name:
-                return prompt
-        return None
+        """Get custom prompt for exception if configured."""
+        exc_name = exc.__class__.__name__
+        return self.custom_handlers.get(exc_name)
 
     @abstractmethod
     async def handle_exception(self, exc: Exception, **kwargs) -> Any:

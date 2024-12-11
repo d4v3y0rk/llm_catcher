@@ -42,13 +42,27 @@ class LLMExceptionDiagnoser:
 
     async def diagnose(
         self,
+        exc: Exception,
         stack_trace: str,
         request_model: Optional[Type[BaseModel]] = None,
         response_model: Optional[Type[BaseModel]] = None,
         request_data: Optional[dict] = None,
         custom_prompt: Optional[str] = None
     ) -> str:
-        """Diagnose an exception using LLM."""
+        """
+        Diagnose an exception using LLM.
+
+        Args:
+            exc: The exception to diagnose
+            stack_trace: The stack trace string
+            request_model: Optional request model schema
+            response_model: Optional response model schema
+            request_data: Optional request data for context
+            custom_prompt: Optional custom prompt to use
+
+        Returns:
+            str: The diagnosis from the LLM
+        """
         try:
             logger.info("Starting diagnosis...")
             schema_info = ""

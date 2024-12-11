@@ -6,41 +6,44 @@ import traceback
 from loguru import logger
 
 class FastAPIExceptionHandler(BaseExceptionHandler):
+    """FastAPI-specific exception handler."""
+
+    def __init__(self, diagnoser, settings=None):
+        """Initialize the handler with diagnoser and settings."""
+        super().__init__(diagnoser, settings)
+
     async def handle_exception(self, exc: Exception, **kwargs) -> JSONResponse:
-        request = kwargs.get("request")
-        if not request or not isinstance(request, Request):
-            return JSONResponse(
-                status_code=500,
-                content={"error": "Internal Server Error", "diagnosis": "Request object not provided"}
-            )
-
+        """Handle exception and return FastAPI response."""
         try:
-            stack_trace = "".join(traceback.format_exception(type(exc), exc, exc.__traceback__))
-
-            # Get route information
-            route = request.scope.get("route")
-            request_model = None
-            response_model = None
-            request_data = None
-
-            if isinstance(route, APIRoute):
-                # Get request model from endpoint parameters
-                for param in route.dependant.body_params:
-                    if hasattr(param.type_, "model_json_schema"):
-                        request_model = param.type_
-                response_model = route.response_model
-
-            # Try to get request data regardless of route type
-            try:
-                request_data = await request.json()
-                logger.debug(f"Got request data: {request_data}")
-            except Exception as e:
-                logger.debug(f"Could not parse request data: {str(e)}")
-
-            # Get custom prompt if configured
+            request = kwargs.get('request')
             custom_prompt = self.get_custom_prompt(exc)
 
+            # Get the full traceback
+            stack_trace = "".join(traceback.format_exception(type(exc), exc, exc.__traceback__))
+            logger.debug(f"Stack trace: {stack_trace}")
+
+            # Extract request data if available
+            request_data = None
+            if request and isinstance(request, Request):
+                try:
+                    request_data = await request.json()
+                except:
+                    request_data = None
+
+            # Get route models if available
+            request_model = None
+            response_model = None
+            if request and hasattr(request.scope.get('route'), 'endpoint'):
+                endpoint = request.scope['route'].endpoint
+                if hasattr(endpoint, '__annotations__'):
+                    annotations = endpoint.__annotations__
+                    request_model = next((v for k, v in annotations.items()
+                                      if k != 'return' and isinstance(v, type)), None)
+                    response_model = annotations.get('return')
+
+            # Get diagnosis with full context
             diagnosis = await self.diagnoser.diagnose(
+                exc,
                 stack_trace,
                 request_model=request_model,
                 response_model=response_model,
@@ -48,13 +51,19 @@ class FastAPIExceptionHandler(BaseExceptionHandler):
                 custom_prompt=custom_prompt
             )
 
+            # Include traceback in response if enabled
+            include_traceback = (
+                hasattr(self.settings, 'include_traceback') and
+                self.settings.include_traceback
+            )
+
             return JSONResponse(
                 status_code=500,
                 content={
-                    "error": "Internal Server Error",
+                    "error": str(exc),
+                    "error_type": exc.__class__.__name__,
                     "diagnosis": diagnosis,
-                    "exception_type": exc.__class__.__name__,
-                    "has_schema_info": bool(request_model or response_model)
+                    "traceback": stack_trace if include_traceback else None
                 }
             )
         except Exception as e:

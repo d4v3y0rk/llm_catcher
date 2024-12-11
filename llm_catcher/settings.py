@@ -4,7 +4,7 @@ from loguru import logger
 import json
 import os
 from pathlib import Path
-from pydantic import Field, ValidationError
+from pydantic import Field, ValidationError, validator
 
 def load_env_file(env_file: str = '.env') -> None:
     """Load environment variables from file."""
@@ -21,67 +21,39 @@ def load_env_file(env_file: str = '.env') -> None:
         logger.warning(f"Error loading .env file: {str(e)}")
 
 class Settings(BaseSettings):
-    """Settings for LLM Catcher with sensible defaults."""
+    """Settings for LLM Catcher."""
 
-    # Required setting - no default for API key
-    openai_api_key: str = Field(..., description="OpenAI API key is required")
-
-    # Optional settings with defaults
+    openai_api_key: str = Field(default=None)
     llm_model: str = Field(default="gpt-4")
     temperature: float = Field(default=0.2)
     handled_exceptions: Union[str, List[str]] = Field(default=["UNHANDLED"])
-    ignore_exceptions: Union[str, List[str]] = Field(default=["KeyboardInterrupt", "SystemExit"])
+    ignore_exceptions: Union[str, List[str]] = Field(default=["SystemExit"])
     custom_handlers: Union[str, Dict[str, str]] = Field(default_factory=dict)
     handle_unhandled_only: bool = Field(default=False)
+    include_traceback: bool = Field(default=False)
 
     def __init__(self, **kwargs):
-        # Check for required API key
-        if not kwargs.get('openai_api_key') and not os.environ.get('LLM_CATCHER_OPENAI_API_KEY'):
-            raise ValidationError([{
-                'loc': ('openai_api_key',),
-                'msg': 'OpenAI API key is required',
-                'type': 'value_error.missing'
-            }])
-
         super().__init__(**kwargs)
         self._process_settings()
 
     def _process_settings(self):
         """Process and validate settings after initialization."""
-        # Handle temperature bounds
-        self.temperature = max(0.0, min(1.0, self.temperature))
+        # Convert string to list for exceptions
+        if isinstance(self.handled_exceptions, str):
+            self.handled_exceptions = [self.handled_exceptions]
+        if isinstance(self.ignore_exceptions, str):
+            self.ignore_exceptions = [self.ignore_exceptions]
+
+        # Validate temperature
+        if self.temperature < 0:
+            self.temperature = 0.0
+        elif self.temperature > 1:
+            self.temperature = 1.0
 
         # Validate model
         valid_models = ["gpt-4", "gpt-3.5-turbo", "gpt-4-1106-preview"]
         if self.llm_model not in valid_models:
             self.llm_model = "gpt-4"
-
-        # Process handled exceptions
-        if isinstance(self.handled_exceptions, str):
-            if self.handled_exceptions in ["ALL", "UNHANDLED"]:
-                self.handled_exceptions = [self.handled_exceptions]
-            else:
-                try:
-                    # Try JSON first
-                    parsed = json.loads(self.handled_exceptions)
-                    if isinstance(parsed, list):
-                        self.handled_exceptions = parsed
-                    else:
-                        self.handled_exceptions = [x.strip() for x in self.handled_exceptions.split(",")]
-                except json.JSONDecodeError:
-                    self.handled_exceptions = [x.strip() for x in self.handled_exceptions.split(",")]
-
-        # Process ignore exceptions
-        if isinstance(self.ignore_exceptions, str):
-            try:
-                # Try JSON first
-                parsed = json.loads(self.ignore_exceptions)
-                if isinstance(parsed, list):
-                    self.ignore_exceptions = parsed
-                else:
-                    self.ignore_exceptions = [x.strip() for x in self.ignore_exceptions.split(",")]
-            except json.JSONDecodeError:
-                self.ignore_exceptions = [x.strip() for x in self.ignore_exceptions.split(",")]
 
         # Process custom handlers
         if isinstance(self.custom_handlers, str):
@@ -104,6 +76,34 @@ class Settings(BaseSettings):
 
         # Set unhandled flag
         self.handle_unhandled_only = "UNHANDLED" in self.handled_exceptions
+
+    @validator('handled_exceptions', 'ignore_exceptions', pre=True)
+    def parse_exceptions(cls, v):
+        if isinstance(v, str):
+            if ',' in v:
+                return [x.strip() for x in v.split(',')]
+            return [v]
+        return v
+
+    @validator('temperature', pre=True)
+    def validate_temperature(cls, v):
+        """Validate and clamp temperature between 0 and 1."""
+        if isinstance(v, (int, float)):
+            if v < 0:
+                return 0.0
+            if v > 1:
+                return 1.0
+        return v
+
+    @validator('custom_handlers', pre=True)
+    def parse_custom_handlers(cls, v):
+        if isinstance(v, str):
+            try:
+                import json
+                return json.loads(v)
+            except json.JSONDecodeError:
+                return {}
+        return v
 
     class Config:
         env_prefix = "LLM_CATCHER_"

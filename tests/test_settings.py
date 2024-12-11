@@ -117,10 +117,12 @@ def test_default_values():
     """Test default values when no environment variables are set."""
     settings = Settings(openai_api_key="test-key")
     assert settings.handled_exceptions == ["UNHANDLED"]
-    assert settings.ignore_exceptions == ["KeyboardInterrupt", "SystemExit"]
+    assert settings.ignore_exceptions == ["SystemExit"]
     assert settings.custom_handlers == {}
-    assert settings.llm_model == "gpt-4"
+    assert settings.handle_unhandled_only is True
     assert settings.temperature == 0.2
+    assert settings.llm_model == "gpt-4"
+    assert settings.include_traceback is False
 
 def test_required_api_key():
     """Test that API key is required."""

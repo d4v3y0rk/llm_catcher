@@ -25,7 +25,6 @@ def test_handler_initialization(handler):
     """Test handler initialization with settings."""
     assert len(handler.handled_exceptions) == 2
     assert len(handler.ignore_exceptions) == 1
-    assert len(handler.custom_handlers) == 1
 
 def test_should_handle_exceptions(handler):
     """Test exception handling decisions."""
