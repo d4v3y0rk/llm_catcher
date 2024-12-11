@@ -118,7 +118,7 @@ def get_settings() -> Settings:
 
         # Then create settings from environment
         settings = Settings()
-        logger.debug(f"Loaded settings: {settings.dict()}")
+        logger.debug("Settings loaded successfully")
         return settings
     except Exception as e:
         logger.error(f"Error loading settings: {str(e)}")

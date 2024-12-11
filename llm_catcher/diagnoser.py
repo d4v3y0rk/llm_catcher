@@ -60,7 +60,6 @@ class LLMExceptionDiagnoser:
                 schema_info += f"\nResponse Schema:\n{response_model.model_json_schema()}"
             if request_data:
                 logger.debug("Including request data")
-                schema_info += f"\nActual Request Data:\n{request_data}"
 
             logger.debug("Preparing prompt for LLM")
             prompt = custom_prompt or (
@@ -83,7 +82,6 @@ class LLMExceptionDiagnoser:
             )
             diagnosis = response.choices[0].message.content.strip()
             logger.info("Received diagnosis from OpenAI")
-            logger.debug(f"Diagnosis: {diagnosis}")
             return diagnosis
         except Exception as e:
             logger.error(f"Error during diagnosis: {str(e)}")
