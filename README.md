@@ -52,20 +52,44 @@ diagnoser = LLMExceptionDiagnoser()
 try:
     result = 1 / 0  # This will raise a ZeroDivisionError
 except Exception as e:
-    diagnosis = diagnoser.diagnose(e)
+    # Use the diagnose method with formatted=False for plain text output
+    diagnosis = diagnoser.diagnose(e, formatted=False)
     print(diagnosis)
 ```
 
-Output:
+### Using with FastAPI
+
+Here's an example of using LLM Catcher with FastAPI, utilizing the `formatted` option for plain text output:
+
+```python
+from fastapi import FastAPI
+from llm_catcher import LLMExceptionDiagnoser
+
+app = FastAPI()
+diagnoser = LLMExceptionDiagnoser()
+
+@app.get("/error")
+async def error():
+    try:
+        1/0
+    except Exception as e:
+        # Use the async_diagnose method with formatted=False for plain text output
+        diagnosis = await diagnoser.async_diagnose(e, formatted=False)
+        return {"error": str(e), "diagnosis": diagnosis}
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="localhost", port=8000)
 ```
-================================================================================
-LLM DIAGNOSIS
-================================================================================
-The error occurred in `minimal_example.py` at line 12. A ZeroDivisionError was raised
-when attempting to divide by zero. To fix this, ensure the denominator is not zero
-before performing the division operation.
-================================================================================
-```
+
+### Formatting Option
+
+The `diagnose` and `async_diagnose` methods have an optional `formatted` parameter:
+
+- `formatted=True` (default): Returns the diagnosis with clear formatting and boundaries.
+- `formatted=False`: Returns the diagnosis as plain text, suitable for JSON responses or other contexts where formatting might be undesirable.
+
+This flexibility allows you to tailor the output to your specific needs, whether for console logs or API responses.
 
 ### Default Setup
 
