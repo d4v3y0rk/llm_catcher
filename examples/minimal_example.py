@@ -3,9 +3,8 @@ import asyncio
 
 async def main():
     """Demonstrate basic usage of LLM Catcher."""
-    # Initialize settings and diagnoser
+    # Initialize diagnoser (will use settings from config.json)
     diagnoser = LLMExceptionDiagnoser()
-    diagnoser.llm_model = "gpt-4o-mini"
 
     try:
         # Cause a simple error

@@ -48,14 +48,14 @@ class Settings(BaseSettings):
 def get_settings() -> Settings:
     """Get settings from environment variables or config file."""
     try:
-        # Attempt to load settings from a config file
-        with open('config.json', 'r') as f:
+        # Attempt to load settings from the llm-catcher specific config file
+        with open('llm_catcher_config.json', 'r') as f:
             config_data = json.load(f)
             settings = Settings(**config_data)
-        logger.debug("Settings loaded successfully from config file")
+        logger.debug("Settings loaded successfully from llm_catcher_config.json")
         return settings
     except FileNotFoundError:
-        logger.warning("Config file not found, loading settings from environment")
+        logger.warning("llm_catcher_config.json not found, loading settings from environment")
         settings = Settings()
         logger.debug("Settings loaded successfully from environment")
         return settings

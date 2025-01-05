@@ -4,8 +4,10 @@ LLM Catcher is a Python library that uses Large Language Models to diagnose and 
 
 ## Features
 
-- Exception diagnosis using LLMs
+- Exception diagnosis using LLMs (OpenAI or Ollama)
 - Both synchronous and asynchronous APIs
+- Support for local LLMs through Ollama
+- Flexible configuration through environment variables or config file
 
 ## Installation
 
@@ -15,102 +17,112 @@ pip install llm-catcher
 
 ## Quick Start
 
+You can use LLM Catcher with either OpenAI's API or local models through Ollama.
+
+### Using OpenAI
+
 1. Create a `.env` file with your OpenAI API key:
 ```env
 LLM_CATCHER_OPENAI_API_KEY=your-api-key-here
+LLM_CATCHER_PROVIDER=openai
 ```
 
-## Examples
+### Using Ollama
 
-The `examples/` directory contains several examples demonstrating different use cases:
-
-### 1. Minimal Example (`examples/minimal.py`)
-- Basic usage with direct LLM exception diagnosis
-- Shows how to set up the diagnoser
-- Demonstrates basic error handling and diagnosis
-
-### 2. FastAPI Integration (`examples/fastapi_example.py`)
-- Shows how to integrate LLM Catcher with FastAPI
-- Demonstrates how to handle exceptions in FastAPI
-- Includes a Swagger UI endpoint for testing
-
-Run any example like this:
-```bash
-# Run minimal example
-python examples/minimal_example.py
-
-# Run FastAPI example
-python examples/fastapi_example.py
-# Then visit http://localhost:8000/docs
-
+1. Install and start Ollama on your machine
+2. Create a `llm_catcher_config.json` file:
+```json
+{
+    "provider": "ollama",
+    "llm_model": "qwen2.5-coder",
+    "temperature": 0.2
+}
 ```
-
-Each example includes detailed comments and demonstrates best practices for using LLM Catcher in different contexts.
 
 ## Configuration
 
-All settings can be configured through environment variables or the Settings class:
+Settings can be configured through:
+1. A `llm_catcher_config.json` file (recommended)
+2. Environment variables
+3. Direct code configuration
 
-### Complete Settings Example
+### Using llm_catcher_config.json
 
-```python
-from llm_catcher.settings import get_settings
+Create a `llm_catcher_config.json` file in your project root. You can choose between OpenAI and Ollama configurations:
 
-settings = get_settings()
+```json
+{
+    "provider": "ollama",  // Use "openai" or "ollama"
+    "llm_model": "qwen2.5-coder",  // Model name
+    "temperature": 0.2
+}
+```
 
-# Required
-settings.openai_api_key = "your-api-key"  # Or set via LLM_CATCHER_OPENAI_API_KEY
-
-# Model Settings
-settings.llm_model = "gpt-4"  # Options: "gpt-4", "gpt-3.5-turbo", "gpt-4-1106-preview"
-settings.temperature = 0.2  # Range: 0.0-1.0
-
+For OpenAI:
+```json
+{
+    "provider": "openai",
+    "llm_model": "gpt-4",
+    "temperature": 0.2,
+    "openai_api_key": "your-api-key-here"
+}
 ```
 
 ### Environment Variables
 
-The same settings can be configured via environment variables:
-
 ```env
-# Required
-LLM_CATCHER_OPENAI_API_KEY=your-api-key-here
+# Provider Selection
+LLM_CATCHER_PROVIDER=openai  # or ollama
 
-# Model Settings
-LLM_CATCHER_LLM_MODEL=gpt-4
-LLM_CATCHER_TEMPERATURE=0.2
+# OpenAI Settings
+LLM_CATCHER_OPENAI_API_KEY=your-api-key-here  # Required for OpenAI
+LLM_CATCHER_LLM_MODEL=gpt-4  # Optional
+LLM_CATCHER_TEMPERATURE=0.2  # Optional
 
+# Debug Mode
+DEBUG=true  # Enable debug logging
 ```
 
 ### Settings Reference
 
 | Setting | Type | Default | Description |
 |---------|------|---------|-------------|
-| `openai_api_key` | str | None | Your OpenAI API key (required) |
-| `llm_model` | str | "gpt-4" | LLM model to use |
+| `provider` | str | "openai" | LLM provider ("openai" or "ollama") |
+| `openai_api_key` | str | None | Your OpenAI API key (required for OpenAI) |
+| `llm_model` | str | "gpt-4" | Model name (provider-specific) |
 | `temperature` | float | 0.2 | Model temperature (0.0-1.0) |
 
-## Development
+## Examples
 
-### Setup Development Environment
+The `examples/` directory contains several examples:
 
+### Basic Usage
+```python
+from llm_catcher import LLMExceptionDiagnoser
+
+# Initialize diagnoser (will use settings from llm_catcher_config.json)
+diagnoser = LLMExceptionDiagnoser()
+
+try:
+    result = 1 / 0  # This will raise a ZeroDivisionError
+except Exception as e:
+    diagnosis = diagnoser.diagnose(e)  # Sync version
+    # or
+    diagnosis = await diagnoser.async_diagnose(e)  # Async version
+    print(diagnosis)
+```
+
+### Debug Mode
+
+Set the `DEBUG` environment variable to see detailed diagnostic information:
 ```bash
-# Clone the repository
-git clone https://github.com/yourusername/llm-catcher.git
-cd llm-catcher
-
-# Create and activate virtual environment
-python -m venv venv
-source venv/bin/activate  # Linux/Mac
-# or
-.\venv\Scripts\activate  # Windows
-
-# Install development dependencies
-pip install -e ".[dev]"  # This installs the package with development extras
+DEBUG=true python your_script.py
 ```
 
 ## Notes
 
-- API key is required and must be provided via environment or settings
+- OpenAI API key is required only when using the OpenAI provider
+- Ollama must be installed and running for local LLM support
 - Settings are validated on initialization
 - Stack traces are included in LLM prompts for better diagnosis
 

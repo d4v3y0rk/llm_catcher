@@ -3,6 +3,7 @@ from loguru import logger
 from openai import AsyncOpenAI, OpenAI
 from ollama import Client, AsyncClient
 import traceback
+import os
 
 class LLMExceptionDiagnoser:
     """Diagnoses exceptions using LLM."""
@@ -27,8 +28,12 @@ class LLMExceptionDiagnoser:
             self.async_client = AsyncOpenAI(api_key=self.settings.openai_api_key)
             self.sync_client = OpenAI(api_key=self.settings.openai_api_key)
         elif self.settings.provider == "ollama":
-            self.async_client = AsyncClient()
-            self.sync_client = Client()
+            try:
+                self.async_client = AsyncClient()
+                self.sync_client = Client()
+            except Exception as e:
+                logger.error(f"Failed to initialize Ollama client: {str(e)}")
+                raise
         else:
             raise ValueError(f"Unsupported provider: {self.settings.provider}")
 
@@ -64,16 +69,22 @@ class LLMExceptionDiagnoser:
             "2. A clear explanation of what went wrong\n"
             "3. Suggestions for fixing the issue\n\n"
             f"Stack Trace:\n{stack_trace}\n"
-            "Format your response as a concise paragraph that includes the file location, "
+            "Format your response as a concise paragraph that includes the pertinant file name (do not include the full path), "
             "explanation, and fix. If file and line information is available, always reference it."
         )
+
+    def _log_debug_info(self, error: Exception):
+        """Log debug information if DEBUG environment variable is set."""
+        if os.getenv("DEBUG"):
+            logger.debug(f"Provider: {self.settings.provider}")
+            logger.debug(f"Diagnosing error: {error}")
+            logger.debug(f"Using model: {self.settings.llm_model}")
 
     async def async_diagnose(self, error: Exception) -> str:
         """Diagnose an exception using LLM (async version)."""
         try:
-            logger.info(f"Provider: {self.settings.provider}")
-            logger.info(f"Diagnosing error: {error}")
-            logger.info(f"Using model: {self.settings.llm_model}")
+            logger.info(f"Diagnosing error with {self.settings.provider}")
+            self._log_debug_info(error)
             message = {"role": "user", "content": self._get_prompt(error)}
             if self.settings.provider == "openai":
                 response = await self.async_client.chat.completions.create(
@@ -95,9 +106,8 @@ class LLMExceptionDiagnoser:
     def diagnose(self, error: Exception) -> str:
         """Diagnose an exception using LLM (sync version)."""
         try:
-            logger.info(f"Provider: {self.settings.provider}")
-            logger.info(f"Diagnosing error: {error}")
-            logger.info(f"Using model: {self.settings.llm_model}")
+            logger.info(f"Diagnosing error with {self.settings.provider}")
+            self._log_debug_info(error)
             message = {"role": "user", "content": self._get_prompt(error)}
             if self.settings.provider == "openai":
                 response = self.sync_client.chat.completions.create(
