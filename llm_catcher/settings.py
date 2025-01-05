@@ -5,6 +5,7 @@ import json
 import os
 from typing import Dict, Any
 
+
 class Settings(BaseSettings):
     """Settings for LLM Catcher."""
     model_config = ConfigDict(
@@ -60,6 +61,7 @@ class Settings(BaseSettings):
             raise ValueError("OpenAI API key must be provided when using OpenAI as the provider.")
         return values
 
+
 def load_config_file() -> Dict[Any, Any]:
     """Load configuration from JSON file."""
     config_paths = [
@@ -79,14 +81,9 @@ def load_config_file() -> Dict[Any, Any]:
                 logger.warning(f"Error reading config file {path}: {str(e)}")
     return {}
 
+
 def get_settings() -> Settings:
-    """
-    Get settings with the following precedence (highest to lowest):
-    1. Local config files (./llm_catcher_config.json, ./config.json)
-    2. User home config (~/.llm_catcher_config.json)
-    3. Environment variables
-    4. Default values
-    """
+    """Get settings with precedence order."""
     # First check local directory config files
     local_paths = [
         "llm_catcher_config.json",

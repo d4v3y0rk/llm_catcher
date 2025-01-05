@@ -2,6 +2,7 @@ import pytest
 from llm_catcher import LLMExceptionDiagnoser
 from unittest.mock import AsyncMock, MagicMock
 
+
 @pytest.fixture
 def diagnoser():
     """Fixture to create a diagnoser instance with mocked clients."""
@@ -9,6 +10,7 @@ def diagnoser():
     diagnoser.sync_client = MagicMock()
     diagnoser.async_client = AsyncMock()
     return diagnoser
+
 
 def test_sync_diagnose_formatted(diagnoser):
     """Test the sync diagnose method with formatted output."""
@@ -21,6 +23,7 @@ def test_sync_diagnose_formatted(diagnoser):
     assert "LLM DIAGNOSIS" in diagnosis
     assert "Diagnosis for ZeroDivisionError" in diagnosis
 
+
 def test_sync_diagnose_plain(diagnoser):
     """Test the sync diagnose method with plain text output."""
     error = ZeroDivisionError("division by zero")
@@ -30,6 +33,7 @@ def test_sync_diagnose_plain(diagnoser):
 
     diagnosis = diagnoser.diagnose(error, formatted=False)
     assert diagnosis == "Diagnosis for ZeroDivisionError"
+
 
 @pytest.mark.asyncio
 async def test_async_diagnose_formatted(diagnoser):
@@ -42,6 +46,7 @@ async def test_async_diagnose_formatted(diagnoser):
     diagnosis = await diagnoser.async_diagnose(error)
     assert "LLM DIAGNOSIS" in diagnosis
     assert "Diagnosis for ZeroDivisionError" in diagnosis
+
 
 @pytest.mark.asyncio
 async def test_async_diagnose_plain(diagnoser):

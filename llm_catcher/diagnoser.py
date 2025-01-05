@@ -5,6 +5,7 @@ from ollama import Client, AsyncClient
 import traceback
 import os
 
+
 class LLMExceptionDiagnoser:
     """Diagnoses exceptions using LLM."""
 
@@ -37,9 +38,11 @@ class LLMExceptionDiagnoser:
             raise ValueError(f"Unsupported provider: {self.settings.provider}")
 
         # Log final configuration (excluding sensitive data)
-        logger.info(f"Configuration: provider={self.settings.provider}, "
-                   f"model={self.settings.llm_model}, "
-                   f"temperature={self.settings.temperature}")
+        logger.info(
+            f"Configuration: provider={self.settings.provider}, "
+            f"model={self.settings.llm_model}, "
+            f"temperature={self.settings.temperature}"
+        )
 
     @property
     def llm_model(self) -> str:
@@ -155,5 +158,3 @@ class LLMExceptionDiagnoser:
         except Exception as e:
             logger.error(f"Error during diagnosis: {str(e)}")
             return f"Failed to contact LLM for diagnosis. Error: {str(e)}"
-
-
