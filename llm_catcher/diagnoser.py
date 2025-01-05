@@ -84,7 +84,7 @@ class LLMExceptionDiagnoser:
             logger.debug(f"Diagnosing error: {error}")
             logger.debug(f"Using model: {self.settings.llm_model}")
 
-    async def async_diagnose(self, error: Exception) -> str:
+    async def async_diagnose(self, error: Exception, formatted: bool = True) -> str:
         """Diagnose an exception using LLM (async version)."""
         try:
             logger.info(f"Diagnosing error with {self.settings.provider}")
@@ -103,24 +103,24 @@ class LLMExceptionDiagnoser:
                     model=self.settings.llm_model,
                     messages=[message]
                 )
-                # Take only the first response from Ollama
                 diagnosis = response.message.content.strip().split('\n')[0]
 
-            # Format the diagnosis with clear boundaries
-            formatted_diagnosis = "\n" + \
-                "="*80 + "\n" + \
-                "LLM DIAGNOSIS\n" + \
-                "="*80 + "\n" + \
-                f"{diagnosis}\n" + \
-                "="*80 + "\n"
-
-            return formatted_diagnosis
+            if formatted:
+                # Format the diagnosis with clear boundaries
+                return "\n" + \
+                    "="*80 + "\n" + \
+                    "LLM DIAGNOSIS\n" + \
+                    "="*80 + "\n" + \
+                    f"{diagnosis}\n" + \
+                    "="*80 + "\n"
+            else:
+                return diagnosis
 
         except Exception as e:
             logger.error(f"Error during diagnosis: {str(e)}")
             return f"Failed to contact LLM for diagnosis. Error: {str(e)}"
 
-    def diagnose(self, error: Exception) -> str:
+    def diagnose(self, error: Exception, formatted: bool = True) -> str:
         """Diagnose an exception using LLM (sync version)."""
         try:
             logger.info(f"Diagnosing error with {self.settings.provider}")
@@ -139,18 +139,18 @@ class LLMExceptionDiagnoser:
                     model=self.settings.llm_model,
                     messages=[message]
                 )
-                # Take only the first response from Ollama
                 diagnosis = response.message.content.strip().split('\n')[0]
 
-            # Format the diagnosis with clear boundaries
-            formatted_diagnosis = "\n" + \
-                "="*80 + "\n" + \
-                "LLM DIAGNOSIS\n" + \
-                "="*80 + "\n" + \
-                f"{diagnosis}\n" + \
-                "="*80 + "\n"
-
-            return formatted_diagnosis
+            if formatted:
+                # Format the diagnosis with clear boundaries
+                return "\n" + \
+                    "="*80 + "\n" + \
+                    "LLM DIAGNOSIS\n" + \
+                    "="*80 + "\n" + \
+                    f"{diagnosis}\n" + \
+                    "="*80 + "\n"
+            else:
+                return diagnosis
 
         except Exception as e:
             logger.error(f"Error during diagnosis: {str(e)}")
