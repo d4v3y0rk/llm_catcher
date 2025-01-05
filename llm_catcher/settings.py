@@ -1,12 +1,18 @@
 from pydantic_settings import BaseSettings
 from loguru import logger
-from pydantic import Field, field_validator, model_validator, ValidationInfo
+from pydantic import Field, field_validator, model_validator, ValidationInfo, ConfigDict
 import json
 import os
 from typing import Dict, Any
 
 class Settings(BaseSettings):
     """Settings for LLM Catcher."""
+    model_config = ConfigDict(
+        env_prefix="LLM_CATCHER_",
+        env_file='.env',
+        env_file_encoding='utf-8'
+    )
+
     openai_api_key: str | None = Field(default=None)
     llm_model: str = Field(default="qwen2.5-coder")
     temperature: float | None = Field(default=None)
@@ -53,11 +59,6 @@ class Settings(BaseSettings):
         if provider == "openai" and not api_key:
             raise ValueError("OpenAI API key must be provided when using OpenAI as the provider.")
         return values
-
-    class Config:
-        env_prefix = "LLM_CATCHER_"
-        env_file = '.env'
-        env_file_encoding = 'utf-8'
 
 def load_config_file() -> Dict[Any, Any]:
     """Load configuration from JSON file."""
