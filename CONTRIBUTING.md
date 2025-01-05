@@ -48,3 +48,41 @@ If you encounter any issues or have questions, please feel free to open an issue
 ## Thank You!
 
 Thank you for your interest in contributing to LLM Catcher. We look forward to your contributions and appreciate your support in making this project better!
+
+## Development Setup
+
+1. **Set up your development environment**:
+   ```bash
+   python -m venv venv
+   source venv/bin/activate  # or `venv\Scripts\activate` on Windows
+   pip install -e ".[dev]"   # This will install the package and development dependencies
+   ```
+
+Note: The `[dev]` extra includes pytest, flake8, and other development tools needed for contributing to the project.
+
+2. **Install development dependencies**:
+   ```bash
+   pip install pytest flake8
+   ```
+
+## Testing
+
+Run the test suite:
+```bash
+# Using the test script
+./scripts/test.sh
+
+# Or directly with pytest
+pytest tests/ -v
+```
+
+## Code Style
+
+We use flake8 for linting. Check your code style with:
+```bash
+# Using the lint script
+./scripts/lint.sh
+
+# Or directly with flake8
+flake8 . --count --max-line-length=128 --statistics
+```

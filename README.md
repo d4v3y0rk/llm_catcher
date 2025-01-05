@@ -237,3 +237,21 @@ This is normal and expected - LLM Catcher will still provide its diagnosis, but 
 ## License
 
 This project is licensed under the GNU General Public License v3.0. See the [LICENSE](LICENSE) file for more details.
+
+## Development
+
+### Testing
+
+Run the test suite:
+```bash
+./scripts/test.sh
+```
+
+### Linting
+
+Check code style:
+```bash
+./scripts/lint.sh
+```
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for more detailed development instructions.
