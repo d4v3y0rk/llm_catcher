@@ -8,26 +8,25 @@ import os
 class LLMExceptionDiagnoser:
     """Diagnoses exceptions using LLM."""
 
-    def __init__(self, settings=None, api_key: str | None = None, model: str | None = None, provider: str | None = None):
-        """Initialize the diagnoser with settings or individual parameters."""
+    def __init__(self, settings=None):
+        """Initialize the diagnoser with settings."""
         logger.info("Initializing LLM Exception Diagnoser")
 
         if settings:
+            logger.info("Using provided settings object")
             self.settings = settings
         else:
+            # Log where settings are coming from
+            logger.info("Loading settings from environment/config files...")
             self.settings = get_settings()
-            if api_key:
-                self.settings.openai_api_key = api_key
-            if model:
-                self.settings.llm_model = model
-            if provider:
-                self.settings.provider = provider
 
         # Initialize the appropriate client based on the provider
         if self.settings.provider == "openai":
+            logger.info(f"Using OpenAI provider with model: {self.settings.llm_model}")
             self.async_client = AsyncOpenAI(api_key=self.settings.openai_api_key)
             self.sync_client = OpenAI(api_key=self.settings.openai_api_key)
         elif self.settings.provider == "ollama":
+            logger.info(f"Using Ollama provider with model: {self.settings.llm_model}")
             try:
                 self.async_client = AsyncClient()
                 self.sync_client = Client()
@@ -36,6 +35,11 @@ class LLMExceptionDiagnoser:
                 raise
         else:
             raise ValueError(f"Unsupported provider: {self.settings.provider}")
+
+        # Log final configuration (excluding sensitive data)
+        logger.info(f"Configuration: provider={self.settings.provider}, "
+                   f"model={self.settings.llm_model}, "
+                   f"temperature={self.settings.temperature}")
 
     @property
     def llm_model(self) -> str:
@@ -86,19 +90,32 @@ class LLMExceptionDiagnoser:
             logger.info(f"Diagnosing error with {self.settings.provider}")
             self._log_debug_info(error)
             message = {"role": "user", "content": self._get_prompt(error)}
+
             if self.settings.provider == "openai":
                 response = await self.async_client.chat.completions.create(
                     model=self.settings.llm_model,
                     messages=[message],
                     temperature=self.settings.temperature,
                 )
-                return response.choices[0].message.content.strip()
+                diagnosis = response.choices[0].message.content.strip()
             elif self.settings.provider == "ollama":
                 response = await self.async_client.chat(
                     model=self.settings.llm_model,
                     messages=[message]
                 )
-                return response.message.content.strip()
+                # Take only the first response from Ollama
+                diagnosis = response.message.content.strip().split('\n')[0]
+
+            # Format the diagnosis with clear boundaries
+            formatted_diagnosis = "\n" + \
+                "="*80 + "\n" + \
+                "LLM DIAGNOSIS\n" + \
+                "="*80 + "\n" + \
+                f"{diagnosis}\n" + \
+                "="*80 + "\n"
+
+            return formatted_diagnosis
+
         except Exception as e:
             logger.error(f"Error during diagnosis: {str(e)}")
             return f"Failed to contact LLM for diagnosis. Error: {str(e)}"
@@ -109,19 +126,32 @@ class LLMExceptionDiagnoser:
             logger.info(f"Diagnosing error with {self.settings.provider}")
             self._log_debug_info(error)
             message = {"role": "user", "content": self._get_prompt(error)}
+
             if self.settings.provider == "openai":
                 response = self.sync_client.chat.completions.create(
                     model=self.settings.llm_model,
                     messages=[message],
                     temperature=self.settings.temperature,
                 )
-                return response.choices[0].message.content.strip()
+                diagnosis = response.choices[0].message.content.strip()
             elif self.settings.provider == "ollama":
                 response = self.sync_client.chat(
                     model=self.settings.llm_model,
                     messages=[message]
                 )
-                return response.message.content.strip()
+                # Take only the first response from Ollama
+                diagnosis = response.message.content.strip().split('\n')[0]
+
+            # Format the diagnosis with clear boundaries
+            formatted_diagnosis = "\n" + \
+                "="*80 + "\n" + \
+                "LLM DIAGNOSIS\n" + \
+                "="*80 + "\n" + \
+                f"{diagnosis}\n" + \
+                "="*80 + "\n"
+
+            return formatted_diagnosis
+
         except Exception as e:
             logger.error(f"Error during diagnosis: {str(e)}")
             return f"Failed to contact LLM for diagnosis. Error: {str(e)}"

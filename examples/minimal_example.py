@@ -8,7 +8,7 @@ async def main():
 
     try:
         # Cause a simple error
-        result = 1 / 0  # This will raise a ZeroDivisionError
+        import nonexistent_package  # Will raise ModuleNotFoundError
     except Exception as e:
         # Get diagnosis from LLM
         diagnosis = await diagnoser.async_diagnose(e)
