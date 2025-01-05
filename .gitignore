@@ -59,3 +59,5 @@ cover/
 # Project specific
 logs/
 *.log
+
+.codegpt
