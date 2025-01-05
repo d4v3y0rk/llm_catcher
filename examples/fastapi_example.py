@@ -14,7 +14,8 @@ async def error():
     try:
         1/0
     except Exception as e:
-        diagnosis = await diagnoser.async_diagnose(e)
+        # Use the async_diagnose method with formatted=False for plain text output
+        diagnosis = await diagnoser.async_diagnose(e, formatted=False)
         return {"error": str(e), "diagnosis": diagnosis}
 
 if __name__ == "__main__":

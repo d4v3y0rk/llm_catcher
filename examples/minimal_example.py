@@ -3,13 +3,12 @@ import asyncio
 
 async def main():
     """Demonstrate basic usage of LLM Catcher."""
-    # Initialize settings and diagnoser
+    # Initialize diagnoser (will use settings from config.json)
     diagnoser = LLMExceptionDiagnoser()
-    diagnoser.llm_model = "gpt-4o-mini"
 
     try:
         # Cause a simple error
-        result = 1 / 0  # This will raise a ZeroDivisionError
+        import nonexistent_package  # Will raise ModuleNotFoundError
     except Exception as e:
         # Get diagnosis from LLM
         diagnosis = await diagnoser.async_diagnose(e)

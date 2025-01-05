@@ -9,3 +9,6 @@ loguru>=0.6.0
 fastapi>=0.68.0
 uvicorn>=0.15.0
 requests>=2.26.0
+
+# Ollama client
+ollama==0.4.5
