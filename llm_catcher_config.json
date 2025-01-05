@@ -1,5 +1,0 @@
-{
-    "provider": "ollama",
-    "llm_model": "qwen2.5-coder",
-    "temperature": 0.2
-}
