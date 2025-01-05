@@ -9,7 +9,7 @@ description = "A Python library that uses LLMs to diagnose and explain exception
 authors = [{name = "Dave York", email = "dave.york@me.com"}]
 readme = "README.md"
 license = {file = "LICENSE"}
-requires-python = ">=3.8"
+requires-python = ">=3.10"
 dependencies = [
     "pydantic>=2.0.0",
     "pydantic-settings>=2.0.0",
