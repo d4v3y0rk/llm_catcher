@@ -1,4 +1,9 @@
 [![PyPI Downloads](https://static.pepy.tech/badge/llm-catcher)](https://pepy.tech/projects/llm-catcher)
+[![PyPI version](https://badge.fury.io/py/llm-catcher.svg)](https://badge.fury.io/py/llm-catcher)
+![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/d4v3y0rk/llm_catcher/python-package.yml)
+
+
+
 # LLM Catcher
 
 Stack traces: the unsung villains of debugging.
