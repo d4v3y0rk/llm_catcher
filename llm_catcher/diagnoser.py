@@ -6,7 +6,7 @@ import traceback
 import os
 import sys
 from functools import wraps
-from typing import Callable, TypeVar, ParamSpec, Any
+from typing import Callable, TypeVar, ParamSpec
 import asyncio
 
 P = ParamSpec('P')
