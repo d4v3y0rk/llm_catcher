@@ -4,13 +4,25 @@ from openai import AsyncOpenAI, OpenAI
 from ollama import Client, AsyncClient
 import traceback
 import os
+import sys
+from functools import wraps
+from typing import Callable, TypeVar, ParamSpec
+import asyncio
+
+P = ParamSpec('P')
+T = TypeVar('T')
 
 
 class LLMExceptionDiagnoser:
     """Diagnoses exceptions using LLM."""
 
-    def __init__(self, settings=None):
-        """Initialize the diagnoser with settings."""
+    def __init__(self, settings=None, global_handler: bool = True):
+        """Initialize the diagnoser with settings.
+
+        Args:
+            settings: Optional settings object to override defaults
+            global_handler: Whether to install global exception handler (default: True)
+        """
         logger.info("Initializing LLM Exception Diagnoser")
 
         if settings:
@@ -43,6 +55,29 @@ class LLMExceptionDiagnoser:
             f"model={self.settings.llm_model}, "
             f"temperature={self.settings.temperature}"
         )
+
+        if global_handler:
+            self.install_global_handler()
+
+    def install_global_handler(self):
+        """Install global exception handler using sys.excepthook."""
+        original_excepthook = sys.excepthook
+
+        @wraps(sys.excepthook)
+        def custom_excepthook(exc_type, exc_value, exc_traceback):
+            """Custom exception hook that diagnoses before printing."""
+            try:
+                diagnosis = self.diagnose(exc_value)
+                # print("\nLLM Diagnosis:", file=sys.stderr)
+                print(diagnosis, file=sys.stderr)
+                # Don't call the original excepthook if we successfully diagnosed
+                return
+            except Exception as e:
+                logger.error(f"Error in global exception handler: {str(e)}")
+                # Only call original excepthook if our diagnosis failed
+                original_excepthook(exc_type, exc_value, exc_traceback)
+
+        sys.excepthook = custom_excepthook
 
     @property
     def llm_model(self) -> str:
@@ -106,7 +141,7 @@ class LLMExceptionDiagnoser:
                     model=self.settings.llm_model,
                     messages=[message]
                 )
-                diagnosis = response.message.content.strip().split('\n')[0]
+                diagnosis = response.message.content.strip()
 
             if formatted:
                 # Format the diagnosis with clear boundaries
@@ -142,7 +177,7 @@ class LLMExceptionDiagnoser:
                     model=self.settings.llm_model,
                     messages=[message]
                 )
-                diagnosis = response.message.content.strip().split('\n')[0]
+                diagnosis = response.message.content.strip()
 
             if formatted:
                 # Format the diagnosis with clear boundaries
@@ -158,3 +193,32 @@ class LLMExceptionDiagnoser:
         except Exception as e:
             logger.error(f"Error during diagnosis: {str(e)}")
             return f"Failed to contact LLM for diagnosis. Error: {str(e)}"
+
+    def catch(self, func: Callable[P, T]) -> Callable[P, T]:
+        """Decorator to catch and diagnose exceptions in a function.
+
+        Example:
+            @diagnoser.catch
+            def my_function():
+                # This function's exceptions will be diagnosed
+                result = 1 / 0
+        """
+        @wraps(func)
+        def sync_wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
+            try:
+                return func(*args, **kwargs)
+            except Exception as e:
+                diagnosis = self.diagnose(e)
+                print(diagnosis, file=sys.stderr)
+                raise  # Re-raise the exception after diagnosis
+
+        @wraps(func)
+        async def async_wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
+            try:
+                return await func(*args, **kwargs)
+            except Exception as e:
+                diagnosis = await self.async_diagnose(e)
+                print(diagnosis, file=sys.stderr)
+                raise  # Re-raise the exception after diagnosis
+
+        return async_wrapper if asyncio.iscoroutinefunction(func) else sync_wrapper

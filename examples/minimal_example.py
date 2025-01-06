@@ -4,13 +4,16 @@ import asyncio
 
 async def main():
     """Demonstrate basic usage of LLM Catcher."""
-    # Initialize diagnoser (will use settings from config.json)
+    # Initialize diagnoser (global handler is enabled by default)
     diagnoser = LLMExceptionDiagnoser()
+
+    # Or explicitly disable the global handler
+    # diagnoser = LLMExceptionDiagnoser(global_handler=False)
 
     try:
         # Cause a simple error
         # Will raise ModuleNotFoundError
-        import nonexistent_package  # noqa: F401
+        potato  # noqa: F821
     except Exception as e:
         # Get diagnosis from LLM
         diagnosis = await diagnoser.async_diagnose(e)
@@ -23,6 +26,9 @@ async def main():
         # Get diagnosis from LLM
         diagnosis = diagnoser.diagnose(e)
         print(diagnosis)
+
+    # This unhandled exception will be caught by the global handler
+    import pandas  # noqa: F401, F841
 
 
 if __name__ == "__main__":
