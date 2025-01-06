@@ -1,3 +1,4 @@
+[![PyPI Downloads](https://static.pepy.tech/badge/llm-catcher)](https://pepy.tech/projects/llm-catcher)
 # LLM Catcher
 
 Stack traces: the unsung villains of debugging.
