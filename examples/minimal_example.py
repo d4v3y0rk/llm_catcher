@@ -13,7 +13,7 @@ async def main():
     try:
         # Cause a simple error
         # Will raise ModuleNotFoundError
-        potato
+        potato  # noqa: F821
     except Exception as e:
         # Get diagnosis from LLM
         diagnosis = await diagnoser.async_diagnose(e)
@@ -28,7 +28,7 @@ async def main():
         print(diagnosis)
 
     # This unhandled exception will be caught by the global handler
-    import pandas  # This will raise an error if numpy isn't installed
+    import pandas  # noqa: F401, F841
 
 
 if __name__ == "__main__":

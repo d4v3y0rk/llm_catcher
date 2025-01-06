@@ -7,11 +7,17 @@ LLM Catcher is your debugging sidekick—a Python library that teams up with Lar
 
 Stop debugging the old-fashioned way. Catch the errors, not the headaches!
 
+> ⚠️ **Note**: This project is under active development and may include breaking changes. See [Version Notice](#version-notice) for details.
+
 ## Features
 
 - Exception diagnosis using LLMs (Ollama or OpenAI)
 - Support for local LLMs through Ollama
 - OpenAI integration for cloud-based models
+- Multiple error handling approaches:
+  - Function decorators for automatic diagnosis
+  - Try/except blocks for manual control
+  - Global exception handler for unhandled errors from imported modules
 - Both synchronous and asynchronous APIs
 - Flexible configuration through environment variables or config file
 
@@ -41,8 +47,6 @@ That's it! You're ready to use LLM Catcher with the default local setup.
 
 ## Quick Start
 
-### Basic Usage
-
 ```python
 from llm_catcher import LLMExceptionDiagnoser
 
@@ -52,15 +56,59 @@ diagnoser = LLMExceptionDiagnoser()
 try:
     result = 1 / 0  # This will raise a ZeroDivisionError
 except Exception as e:
-    # Use the diagnose method with formatted=False for plain text output
-    diagnosis = diagnoser.diagnose(e, formatted=False)
+    diagnosis = diagnoser.diagnose(e)
     print(diagnosis)
 ```
 
-### Using with FastAPI
+## Usage Patterns
 
-Here's an example of using LLM Catcher with FastAPI, utilizing the `formatted` option for plain text output:
+### Exception Handling Approaches
 
+#### 1. Function Decorator
+```python
+@diagnoser.catch
+def risky_function():
+    """Errors will be automatically diagnosed."""
+    return 1 / 0
+
+@diagnoser.catch
+async def async_risky_function():
+    """Works with async functions too."""
+    import nonexistent_module
+```
+
+#### 2. Try/Except Blocks
+```python
+# Synchronous
+try:
+    result = risky_operation()
+except Exception as e:
+    diagnosis = diagnoser.diagnose(e)
+    print(diagnosis)
+
+# Asynchronous
+try:
+    result = await async_operation()
+except Exception as e:
+    diagnosis = await diagnoser.async_diagnose(e)
+    print(diagnosis)
+```
+
+#### 3. Global Exception Handler
+By default, LLM Catcher catches all unhandled exceptions. You might want to disable this when:
+- You have other error handling middleware or global handlers
+- You want to handle exceptions only in specific try/except blocks
+- You're using a framework with its own error handling
+- You want more control over which exceptions get diagnosed
+
+```python
+# Disable global handler for more specific exception handling
+diagnoser = LLMExceptionDiagnoser(global_handler=False)
+```
+
+### Web Framework Integration
+
+#### FastAPI Example
 ```python
 from fastapi import FastAPI
 from llm_catcher import LLMExceptionDiagnoser
@@ -73,34 +121,24 @@ async def error():
     try:
         1/0
     except Exception as e:
-        # Use the async_diagnose method with formatted=False for plain text output
         diagnosis = await diagnoser.async_diagnose(e, formatted=False)
         return {"error": str(e), "diagnosis": diagnosis}
-
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="localhost", port=8000)
 ```
 
-### Formatting Option
+### Formatting Options
 
-The `diagnose` and `async_diagnose` methods have an optional `formatted` parameter:
+The diagnosis output can be formatted in two ways:
+- `formatted=True` (default): Returns the diagnosis with clear formatting and boundaries
+- `formatted=False`: Returns plain text, suitable for JSON responses
 
-- `formatted=True` (default): Returns the diagnosis with clear formatting and boundaries.
-- `formatted=False`: Returns the diagnosis as plain text, suitable for JSON responses or other contexts where formatting might be undesirable.
+### Debug Mode
 
-This flexibility allows you to tailor the output to your specific needs, whether for console logs or API responses.
+For detailed diagnostic information:
+```bash
+DEBUG=true python your_script.py
+```
 
-### Default Setup
-
-Out of the box, LLM Catcher uses these defaults:
-- Provider: `ollama`
-- Model: `qwen2.5-coder`
-
-For OpenAI configurations:
-- Temperature: `0.2` (only used with OpenAI)
-
-This means you can start using LLM Catcher immediately after installing Ollama and pulling the model.
+[Configuration section follows...]
 
 ## Configuration
 
@@ -169,23 +207,13 @@ Note: When using OpenAI, if no model is specified, `gpt-4` will be used as the d
 
 ## Examples
 
-The `examples/` directory contains several examples:
+The `examples/` directory contains several examples demonstrating different use cases:
 
-### Basic Usage
-```python
-from llm_catcher import LLMExceptionDiagnoser
+- `minimal_example.py`: Basic usage with try/except and global handler
+- `decorator_example.py`: Using the function decorator with both sync and async functions
+- `fastapi_example.py`: Integration with FastAPI
 
-# Initialize diagnoser (will use settings from llm_catcher_config.json)
-diagnoser = LLMExceptionDiagnoser()
-
-try:
-    result = 1 / 0  # This will raise a ZeroDivisionError
-except Exception as e:
-    diagnosis = diagnoser.diagnose(e)  # Sync version
-    # or
-    diagnosis = await diagnoser.async_diagnose(e)  # Async version
-    print(diagnosis)
-```
+Check out these examples to see LLM Catcher in action with different patterns and frameworks.
 
 ### Debug Mode
 
@@ -201,38 +229,19 @@ DEBUG=true python your_script.py
 - Settings are validated on initialization
 - Stack traces are included in LLM prompts for better diagnosis
 
-## Design Decisions
+## Version Notice
 
-### Why No Decorators?
+⚠️ **Pre-1.0.0 Version Notice**: This project is in active development and may introduce breaking changes between versions. Notable changes include:
 
-While decorators might seem convenient for error handling, we deliberately chose not to provide them because:
+- Changed default provider from OpenAI to Ollama
+- Added global exception handler (enabled by default)
+- Added function decorator support
 
-1. Explicit error handling with try/except blocks is more Pythonic
-2. Decorators can mask the actual flow of error handling
-3. Try/except blocks give developers more control over:
-   - Which errors to catch
-   - How to handle different types of errors
-   - When to suppress vs propagate errors
-   - Where to place the diagnosis in their logging flow
+If you're upgrading from an earlier version, please review these changes. We recommend pinning to a specific version in your dependencies until we reach 1.0.0:
 
-### Caveats
-
-#### Stack Trace Output
-
-LLM Catcher cannot prevent all stack traces from appearing in your output. This is because:
-
-1. Python modules can write directly to stderr/stdout
-2. Some modules print stack traces during their import or initialization
-3. Third-party libraries may have their own error handling that prints traces
-4. System-level errors may bypass Python's exception handling
-
-For example, when importing a module with missing dependencies, you might see output like:
+```bash
+pip install llm-catcher==0.3.5
 ```
-ImportError: cannot import name 'foo' from 'some_module'
-[stack trace from the module...]
-```
-
-This is normal and expected - LLM Catcher will still provide its diagnosis, but it cannot prevent other modules from writing their own error output.
 
 ## License
 

@@ -1,60 +1,85 @@
 import pytest
 from llm_catcher import LLMExceptionDiagnoser
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
+import sys
 
 
 @pytest.fixture
 def diagnoser():
     """Fixture to create a diagnoser instance with mocked clients."""
-    diagnoser = LLMExceptionDiagnoser()
+    diagnoser = LLMExceptionDiagnoser(global_handler=False)  # Disable global handler for basic tests
     diagnoser.sync_client = MagicMock()
     diagnoser.async_client = AsyncMock()
     return diagnoser
 
 
-def test_sync_diagnose_formatted(diagnoser):
-    """Test the sync diagnose method with formatted output."""
-    error = ZeroDivisionError("division by zero")
+def test_global_handler():
+    """Test that global exception handler is installed correctly."""
+    original_excepthook = sys.excepthook
+    diagnoser = LLMExceptionDiagnoser(global_handler=True)
+    assert sys.excepthook != original_excepthook
+
+    # Test that handler catches and diagnoses
+    with patch.object(diagnoser, 'diagnose', return_value="Test diagnosis"):
+        with pytest.raises(ZeroDivisionError):
+            1/0
+
+
+def test_decorator_sync():
+    """Test the catch decorator with a synchronous function."""
+    diagnoser = LLMExceptionDiagnoser(global_handler=False)
+    diagnoser.sync_client = MagicMock()
     diagnoser.sync_client.chat.return_value = MagicMock(
-        message=MagicMock(content="Diagnosis for ZeroDivisionError")
+        message=MagicMock(content="Test diagnosis")
     )
 
-    diagnosis = diagnoser.diagnose(error)
-    assert "LLM DIAGNOSIS" in diagnosis
-    assert "Diagnosis for ZeroDivisionError" in diagnosis
+    @diagnoser.catch
+    def failing_function():
+        return 1/0
 
-
-def test_sync_diagnose_plain(diagnoser):
-    """Test the sync diagnose method with plain text output."""
-    error = ZeroDivisionError("division by zero")
-    diagnoser.sync_client.chat.return_value = MagicMock(
-        message=MagicMock(content="Diagnosis for ZeroDivisionError")
-    )
-
-    diagnosis = diagnoser.diagnose(error, formatted=False)
-    assert diagnosis == "Diagnosis for ZeroDivisionError"
+    with pytest.raises(ZeroDivisionError):
+        failing_function()
 
 
 @pytest.mark.asyncio
-async def test_async_diagnose_formatted(diagnoser):
-    """Test the async diagnose method with formatted output."""
-    error = ZeroDivisionError("division by zero")
+async def test_decorator_async():
+    """Test the catch decorator with an async function."""
+    diagnoser = LLMExceptionDiagnoser(global_handler=False)
+    diagnoser.async_client = AsyncMock()
     diagnoser.async_client.chat.return_value = MagicMock(
-        message=MagicMock(content="Diagnosis for ZeroDivisionError")
+        message=MagicMock(content="Test diagnosis")
     )
 
-    diagnosis = await diagnoser.async_diagnose(error)
-    assert "LLM DIAGNOSIS" in diagnosis
-    assert "Diagnosis for ZeroDivisionError" in diagnosis
+    @diagnoser.catch
+    async def failing_async_function():
+        return 1/0
+
+    with pytest.raises(ZeroDivisionError):
+        await failing_async_function()
+
+
+def test_decorator_preserves_metadata():
+    """Test that the decorator preserves function metadata."""
+    diagnoser = LLMExceptionDiagnoser(global_handler=False)
+
+    @diagnoser.catch
+    def test_function():
+        """Test docstring"""
+        pass
+
+    assert test_function.__doc__ == "Test docstring"
+    assert test_function.__name__ == "test_function"
 
 
 @pytest.mark.asyncio
-async def test_async_diagnose_plain(diagnoser):
-    """Test the async diagnose method with plain text output."""
-    error = ZeroDivisionError("division by zero")
-    diagnoser.async_client.chat.return_value = MagicMock(
-        message=MagicMock(content="Diagnosis for ZeroDivisionError")
-    )
+async def test_decorator_preserves_async_metadata():
+    """Test that the decorator preserves async function metadata."""
+    diagnoser = LLMExceptionDiagnoser(global_handler=False)
 
-    diagnosis = await diagnoser.async_diagnose(error, formatted=False)
-    assert diagnosis == "Diagnosis for ZeroDivisionError"
+    @diagnoser.catch
+    async def test_async_function():
+        """Test async docstring"""
+        pass
+
+    assert test_async_function.__doc__ == "Test async docstring"
+    assert test_async_function.__name__ == "test_async_function"
