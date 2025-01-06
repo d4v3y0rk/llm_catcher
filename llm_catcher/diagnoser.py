@@ -209,7 +209,6 @@ class LLMExceptionDiagnoser:
                 return func(*args, **kwargs)
             except Exception as e:
                 diagnosis = self.diagnose(e)
-                # print("\nLLM Diagnosis:", file=sys.stderr)
                 print(diagnosis, file=sys.stderr)
                 raise  # Re-raise the exception after diagnosis
 
@@ -219,33 +218,7 @@ class LLMExceptionDiagnoser:
                 return await func(*args, **kwargs)
             except Exception as e:
                 diagnosis = await self.async_diagnose(e)
-                # print("\nLLM Diagnosis:", file=sys.stderr)
                 print(diagnosis, file=sys.stderr)
                 raise  # Re-raise the exception after diagnosis
 
         return async_wrapper if asyncio.iscoroutinefunction(func) else sync_wrapper
-
-    def fastapi_catch(self, func: Callable[P, T]) -> Callable[P, T]:
-        """Decorator specifically for FastAPI endpoints.
-
-        Example:
-            @app.get("/my-endpoint")
-            @diagnoser.fastapi_catch
-            async def my_endpoint():
-                # Errors will be diagnosed and returned as HTTP responses
-                result = 1 / 0
-        """
-        @wraps(func)
-        async def wrapper(*args: P.args, **kwargs: P.kwargs) -> Any:
-            try:
-                return await func(*args, **kwargs)
-            except Exception as e:
-                diagnosis = await self.async_diagnose(e, formatted=False)
-                raise HTTPException(
-                    status_code=500,
-                    detail={
-                        "error": str(e),
-                        "diagnosis": diagnosis
-                    }
-                )
-        return wrapper
