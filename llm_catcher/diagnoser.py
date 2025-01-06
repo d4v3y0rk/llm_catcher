@@ -4,13 +4,20 @@ from openai import AsyncOpenAI, OpenAI
 from ollama import Client, AsyncClient
 import traceback
 import os
+import sys
+from functools import wraps
 
 
 class LLMExceptionDiagnoser:
     """Diagnoses exceptions using LLM."""
 
-    def __init__(self, settings=None):
-        """Initialize the diagnoser with settings."""
+    def __init__(self, settings=None, global_handler: bool = True):
+        """Initialize the diagnoser with settings.
+
+        Args:
+            settings: Optional settings object to override defaults
+            global_handler: Whether to install global exception handler (default: True)
+        """
         logger.info("Initializing LLM Exception Diagnoser")
 
         if settings:
@@ -43,6 +50,29 @@ class LLMExceptionDiagnoser:
             f"model={self.settings.llm_model}, "
             f"temperature={self.settings.temperature}"
         )
+
+        if global_handler:
+            self.install_global_handler()
+
+    def install_global_handler(self):
+        """Install global exception handler using sys.excepthook."""
+        original_excepthook = sys.excepthook
+
+        @wraps(sys.excepthook)
+        def custom_excepthook(exc_type, exc_value, exc_traceback):
+            """Custom exception hook that diagnoses before printing."""
+            try:
+                diagnosis = self.diagnose(exc_value)
+                print("\nLLM Diagnosis:", file=sys.stderr)
+                print(diagnosis, file=sys.stderr)
+                # Don't call the original excepthook if we successfully diagnosed
+                return
+            except Exception as e:
+                logger.error(f"Error in global exception handler: {str(e)}")
+                # Only call original excepthook if our diagnosis failed
+                original_excepthook(exc_type, exc_value, exc_traceback)
+
+        sys.excepthook = custom_excepthook
 
     @property
     def llm_model(self) -> str:
