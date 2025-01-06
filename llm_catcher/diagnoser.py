@@ -8,7 +8,6 @@ import sys
 from functools import wraps
 from typing import Callable, TypeVar, ParamSpec, Any
 import asyncio
-from fastapi import HTTPException
 
 P = ParamSpec('P')
 T = TypeVar('T')
